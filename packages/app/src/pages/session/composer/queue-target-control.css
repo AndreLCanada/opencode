@@ -1,0 +1,17 @@
+[data-queue-target-trigger] {
+  container-type: inline-size;
+}
+
+[data-queue-target-icon] {
+  display: none;
+}
+
+@container (max-width: 110px) {
+  [data-queue-target-label] {
+    display: none;
+  }
+
+  [data-queue-target-icon] {
+    display: inline-flex;
+  }
+}
