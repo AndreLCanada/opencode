@@ -12,6 +12,7 @@ import {
   Switch,
   Match,
   type JSX,
+  type Accessor,
 } from "solid-js"
 import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/file"
 import {
@@ -1111,6 +1112,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       (id) => {
         const edit = props.edit
         if (!id || !edit) return
+        props.setQueueTarget?.(edit.target ?? "followup")
 
         for (const item of prompt.context.items()) {
           prompt.context.remove(item.key)
@@ -1223,7 +1225,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       newSessionWorktree: () => props.newSessionWorktree,
       onNewSessionWorktreeReset: props.onNewSessionWorktreeReset,
       shouldQueue: props.shouldQueue,
+      queueTarget: props.queueTarget,
       onQueue: props.onQueue,
+      onInterrupt: props.onInterrupt,
       onAbort: props.onAbort,
       onSubmit: props.onSubmit,
       model: props.controls.model.selection,

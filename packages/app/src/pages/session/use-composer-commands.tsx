@@ -1,3 +1,4 @@
+import { type Accessor } from "solid-js"
 import { useCommand, type CommandOption } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useLocal, type ModelSelection } from "@/context/local"
@@ -5,6 +6,8 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { getCursorPosition, setCursorPosition } from "@/components/prompt-input/editor-dom"
 import { useSessionLayout } from "./session-layout"
 import { createSessionOwnership } from "./session-ownership"
+import { TARGETS } from "./composer/queue-target-control"
+import type { FollowupTarget } from "@/components/prompt-input/submit"
 
 const withCategory = (category: string) => {
   return (option: Omit<CommandOption, "category">): CommandOption => ({
@@ -13,7 +16,11 @@ const withCategory = (category: string) => {
   })
 }
 
-export const useComposerCommands = (input: { model?: ModelSelection } = {}) => {
+export const useComposerCommands = (input: {
+  model?: ModelSelection
+  queueTarget?: Accessor<FollowupTarget>
+  setQueueTarget?: (target: FollowupTarget) => void
+} = {}) => {
   const command = useCommand()
   const dialog = useDialog()
   const language = useLanguage()
@@ -88,6 +95,20 @@ export const useComposerCommands = (input: { model?: ModelSelection } = {}) => {
       onSelect: async () => {
         const { ScheduleDialog } = await import("./scheduled-tasks")
         dialog.show(() => <ScheduleDialog />)
+      },
+    }),
+    sessionCommand({
+      id: "prompt.queueTarget.cycle",
+      title: language.t("command.prompt.queueTarget.cycle"),
+      description: language.t("command.prompt.queueTarget.cycle.description"),
+      keybind: "mod+/",
+      disabled: !input.queueTarget || !input.setQueueTarget,
+      onSelect: () => {
+        if (!input.queueTarget || !input.setQueueTarget) return
+        const current = input.queueTarget()
+        const index = TARGETS.indexOf(current)
+        const next = TARGETS[(index + 1) % TARGETS.length]
+        input.setQueueTarget(next)
       },
     }),
   ])

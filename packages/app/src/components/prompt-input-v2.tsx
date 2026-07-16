@@ -91,6 +91,7 @@ const useEditHandler = (props: PromptInputV2ComposerProps) => {
       (id) => {
         const edit = props.edit
         if (!id || !edit) return
+        props.setQueueTarget?.(edit.target ?? "followup")
         prompt.context.items().forEach((item) => prompt.context.remove(item.key))
         edit.context.forEach((item) =>
           prompt.context.add({
@@ -280,7 +281,9 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     newSessionWorktree: () => props.newSessionWorktree,
     onNewSessionWorktreeReset: props.onNewSessionWorktreeReset,
     shouldQueue: props.shouldQueue,
+    queueTarget: props.queueTarget,
     onQueue: props.onQueue,
+    onInterrupt: props.onInterrupt,
     onAbort: props.onAbort,
     onSubmit: props.onSubmit,
     model: props.controls.model.selection,

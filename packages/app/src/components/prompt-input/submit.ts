@@ -30,6 +30,8 @@ type PendingPrompt = {
 
 const pending = new Map<string, PendingPrompt>()
 
+export type FollowupTarget = "steer" | "current-stream" | "followup" | "sub-session"
+
 export type FollowupDraft = {
   sessionID: string
   sessionDirectory: string
@@ -38,6 +40,7 @@ export type FollowupDraft = {
   agent: string
   model: { providerID: string; modelID: string }
   variant?: string
+  target?: FollowupTarget
 }
 
 type FollowupSendInput = {
@@ -48,6 +51,7 @@ type FollowupSendInput = {
   messageID?: string
   optimisticBusy?: boolean
   before?: () => Promise<boolean> | boolean
+  targetSessionID?: string
 }
 
 const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? part.content : "")).join("")
@@ -55,16 +59,19 @@ const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? 
 const draftImages = (prompt: Prompt) => prompt.filter((part): part is ImageAttachmentPart => part.type === "image")
 
 export async function sendFollowupDraft(input: FollowupSendInput) {
+  const sessionID = input.targetSessionID ?? input.draft.sessionID
   const text = draftText(input.draft.prompt)
   const images = draftImages(input.draft.prompt)
   const setBusy = () => {
     if (!input.optimisticBusy) return
-    input.serverSync.session.set("session_status", input.draft.sessionID, { type: "busy" })
+    input.sync.set("session_status", sessionID, { type: "busy" })
+    input.serverSync.session.set("session_status", sessionID, { type: "busy" })
   }
 
   const setIdle = () => {
     if (!input.optimisticBusy) return
-    input.serverSync.session.set("session_status", input.draft.sessionID, { type: "idle" })
+    input.sync.set("session_status", sessionID, { type: "idle" })
+    input.serverSync.session.set("session_status", sessionID, { type: "idle" })
   }
 
   const wait = async () => {
@@ -85,7 +92,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
 
       const messageID = Identifier.ascending("message")
       await input.api.command({
-        sessionID: input.draft.sessionID,
+        sessionID,
         id: messageID,
         command: cmd,
         arguments: tail.join(" "),
@@ -113,14 +120,14 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     context: input.draft.context,
     images,
     text,
-    sessionID: input.draft.sessionID,
+    sessionID,
     messageID,
     sessionDirectory: input.draft.sessionDirectory,
   })
 
   const message: Message = {
     id: messageID,
-    sessionID: input.draft.sessionID,
+    sessionID,
     role: "user",
     time: { created: Date.now() },
     agent: input.draft.agent,
@@ -130,7 +137,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
   const add = () =>
     input.sync.session.optimistic.add({
       directory: input.draft.sessionDirectory,
-      sessionID: input.draft.sessionID,
+      sessionID,
       message,
       parts: optimisticParts,
     })
@@ -138,7 +145,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
   const remove = () =>
     input.sync.session.optimistic.remove({
       directory: input.draft.sessionDirectory,
-      sessionID: input.draft.sessionID,
+      sessionID,
       messageID,
     })
 
@@ -157,7 +164,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     }
 
     await input.api.prompt({
-      sessionID: input.draft.sessionID,
+      sessionID,
       id: messageID,
       agent: input.draft.agent,
       model: input.draft.model,
@@ -187,6 +194,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
             ]
           : [],
       ),
+      ...(input.draft.target === "current-stream" ? { delivery: "steer" } : {}),
     })
     return true
   } catch (err) {
@@ -216,7 +224,9 @@ type PromptSubmitInput = {
   newSessionWorktree?: Accessor<string | undefined>
   onNewSessionWorktreeReset?: () => void
   shouldQueue?: Accessor<boolean>
+  queueTarget?: Accessor<FollowupTarget>
   onQueue?: (draft: FollowupDraft) => void
+  onInterrupt?: (draft: FollowupDraft, messageID: string) => void | Promise<void>
   onAbort?: () => void
   onSubmit?: () => void
   model?: ModelSelection
@@ -445,6 +455,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       agent,
       model,
       variant,
+      target: input.queueTarget?.(),
     }
 
     const clearInput = () => {
@@ -470,8 +481,18 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return true
     }
 
+    const messageID = Identifier.ascending("message")
+
     if (!isNewSession && mode === "normal" && input.shouldQueue?.()) {
       input.onQueue?.(draft)
+      clearContext(submission.target())
+      clearInput()
+      return
+    }
+
+    if (!isNewSession && mode === "normal" && input.queueTarget?.() === "steer" && input.onInterrupt) {
+      input.onAbort?.()
+      await input.onInterrupt(draft, messageID)
       clearContext(submission.target())
       clearInput()
       return
@@ -534,7 +555,6 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     }
 
     const commentItems = context.filter((item) => item.type === "file" && !!item.comment?.trim())
-    const messageID = Identifier.ascending("message")
 
     const removeOptimisticMessage = () => {
       sync().session.optimistic.remove({

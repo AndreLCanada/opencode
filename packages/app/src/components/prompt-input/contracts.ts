@@ -1,7 +1,8 @@
 import type { useLocal } from "@/context/local"
 import type { Prompt, usePrompt } from "@/context/prompt"
+import type { Accessor, JSX } from "solid-js"
 import type { PromptInputHistory } from "./history-store"
-import type { FollowupDraft } from "./submit"
+import type { FollowupDraft, FollowupTarget } from "./submit"
 
 export type PromptInputState = ReturnType<typeof usePrompt>
 
@@ -48,10 +49,14 @@ export interface PromptInputProps {
   ref?: (el: HTMLDivElement) => void
   newSessionWorktree?: string
   onNewSessionWorktreeReset?: () => void
-  edit?: { id: string; prompt: Prompt; context: FollowupDraft["context"] }
+  edit?: { id: string; prompt: Prompt; context: FollowupDraft["context"]; target?: FollowupTarget }
   onEditLoaded?: () => void
   shouldQueue?: () => boolean
+  queueTarget?: Accessor<FollowupTarget>
+  setQueueTarget?: (target: FollowupTarget) => void
   onQueue?: (draft: FollowupDraft) => void
+  onInterrupt?: (draft: FollowupDraft, messageID: string) => void | Promise<void>
   onAbort?: () => void
   onSubmit?: () => void
+  toolbar?: JSX.Element
 }
