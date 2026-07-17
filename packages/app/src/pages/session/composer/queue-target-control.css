@@ -6,14 +6,19 @@
   min-width: 0;
 }
 
-@container (max-width: 300px) {
-  [data-component="queue-target-label"],
-  [data-component="model-name"] {
+@container (max-width: 400px) {
+  [data-component="queue-target-label"] {
     display: none;
   }
 
   [data-component="queue-target-trigger"] {
     padding-left: 6px !important;
     padding-right: 6px !important;
+  }
+}
+
+@container (max-width: 300px) {
+  [data-component="model-name"] {
+    display: none;
   }
 }
