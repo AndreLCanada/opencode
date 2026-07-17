@@ -24,6 +24,7 @@ export function QueueTargetControl(props: {
   }
 
   const [menuOpen, setMenuOpen] = createSignal(false)
+  let skipNextOpen = false
   let labelRef: HTMLSpanElement | undefined
 
   createEffect(
@@ -31,6 +32,10 @@ export function QueueTargetControl(props: {
       () => props.target,
       () => {
         if (menuOpen()) return
+        if (skipNextOpen) {
+          skipNextOpen = false
+          return
+        }
         if (labelRef && labelRef.offsetWidth === 0) setMenuOpen(true)
       },
       { defer: true },
@@ -67,7 +72,10 @@ export function QueueTargetControl(props: {
           <MenuV2.Content>
             <MenuV2.RadioGroup
               value={props.target}
-              onChange={(value) => props.onChange(value as FollowupTarget)}
+              onChange={(value) => {
+                skipNextOpen = true
+                props.onChange(value as FollowupTarget)
+              }}
             >
               {TARGETS.map((value) => (
                 <TooltipV2
