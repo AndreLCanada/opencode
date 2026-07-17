@@ -2,15 +2,17 @@ import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/icon"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
+import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { useLanguage } from "@/context/language"
 import type { FollowupTarget } from "@/components/prompt-input/submit"
 import "./queue-target-control.css"
 
-const TARGETS: FollowupTarget[] = ["steer", "current-stream", "followup", "sub-session"]
+export const TARGETS: FollowupTarget[] = ["steer", "current-stream", "followup", "sub-session"]
 
 export function QueueTargetControl(props: {
   target: FollowupTarget
   onChange: (target: FollowupTarget) => void
+  keybind?: string[]
 }) {
   const language = useLanguage()
   const labels: Record<FollowupTarget, string> = {
@@ -24,22 +26,26 @@ export function QueueTargetControl(props: {
     <TooltipV2
       placement="top"
       gutter={4}
-      value={labels[props.target]}
+      class="min-w-0"
+      value={
+        <>
+          {language.t("command.prompt.queueTarget.cycle")}
+          {props.keybind && <KeybindV2 keys={props.keybind} variant="neutral" />}
+        </>
+      }
     >
     <MenuV2 gutter={6} modal={false} placement="top-start">
       <MenuV2.Trigger
         as={ButtonV2}
         variant="ghost-muted"
         size="normal"
-        data-queue-target-trigger
-        class="min-w-0 max-w-[175px] justify-start ![font-weight:440]"
+        data-component="queue-target-trigger"
+        class="max-w-[175px] min-w-0 justify-start ![font-weight:440]"
       >
-        <span data-queue-target-icon>
-          <Icon name="bullet-list" size="small" class="shrink-0" />
-        </span>
-        <span data-queue-target-label class="min-w-0 truncate leading-5">{labels[props.target]}</span>
+        <Icon name="bullet-list" size="small" />
+        <span class="min-w-0 block truncate leading-5" data-component="queue-target-label">{labels[props.target]}</span>
         <span class="-ml-0.5 -mr-1 flex shrink-0">
-          <Icon name="chevron-down" size="small" class="text-v2-icon-icon-muted" />
+          <Icon name="chevron-down" size="small" />
         </span>
       </MenuV2.Trigger>
       <MenuV2.Portal>
@@ -50,7 +56,7 @@ export function QueueTargetControl(props: {
           >
             {TARGETS.map((value) => (
               <TooltipV2
-                class="w-full"
+                class="w-full block"
                 placement="right-start"
                 gutter={6}
                 openDelay={0}

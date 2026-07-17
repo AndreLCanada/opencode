@@ -1203,7 +1203,7 @@ export default function Page() {
     inputRef?.focus()
   }
 
-  useComposerCommands()
+  useComposerCommands({ queueTarget, setQueueTarget: persistQueueTarget })
   useSessionCommands({
     navigateMessageByOffset,
     setActiveMessage,
@@ -2305,7 +2305,7 @@ export default function Page() {
             }}
             toolbar={
               params.id && !isChildSession() && queueEnabled() ? (
-                <QueueTargetControl target={queueTarget()} onChange={persistQueueTarget} />
+                <QueueTargetControl target={queueTarget()} onChange={persistQueueTarget} keybind={command.keybindParts("prompt.queueTarget.cycle")} />
               ) : undefined
             }
           />

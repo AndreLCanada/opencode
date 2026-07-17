@@ -93,6 +93,8 @@ export const dict = {
   "command.agent.cycle.description": "切换到下一个智能体",
   "command.agent.cycle.reverse": "反向切换智能体",
   "command.agent.cycle.reverse.description": "切换到上一个智能体",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
 
   "command.model.variant.cycle": "切换思考强度",
   "command.model.variant.cycle.description": "切换到下一个强度等级",

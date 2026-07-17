@@ -71,6 +71,8 @@ export const dict = {
   "command.agent.cycle.description": "Переключиться к следующему агенту",
   "command.agent.cycle.reverse": "Цикл агентов назад",
   "command.agent.cycle.reverse.description": "Переключиться к предыдущему агенту",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Цикл режимов мышления",
   "command.model.variant.cycle.description": "Переключиться к следующему уровню усилий",
   "command.prompt.mode.shell": "Оболочка",

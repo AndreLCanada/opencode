@@ -71,6 +71,8 @@ export const dict = {
   "command.agent.cycle.description": "Prebaci na sljedećeg agenta",
   "command.agent.cycle.reverse": "Promijeni agenta unazad",
   "command.agent.cycle.reverse.description": "Prebaci na prethodnog agenta",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Promijeni nivo razmišljanja",
   "command.model.variant.cycle.description": "Prebaci na sljedeći nivo",
   "command.prompt.mode.shell": "Shell",
