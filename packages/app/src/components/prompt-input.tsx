@@ -2275,7 +2275,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                   as="div"
                   variant="ghost"
                   size="normal"
-                  class="min-w-[44px] max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group"
+                  class="min-w-[44px] max-w-[220px] shrink-1 justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group"
                   classList={{ "animate-in fade-in": props.state.shouldAnimate }}
                   style={props.state.style}
                   onClick={props.state.onUnpaidClick}
@@ -2300,7 +2300,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                 data-action="prompt-model"
                 variant="ghost-muted"
                 size="normal"
-                class="min-w-[44px] max-w-[220px] justify-start ![font-weight:440] group"
+                class="min-w-[44px] max-w-[220px] shrink-1 justify-start ![font-weight:440] group"
                 classList={{ "animate-in fade-in": props.state.shouldAnimate }}
                 style={props.state.style}
                 onClick={props.state.onUnpaidClick}
@@ -2333,7 +2333,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                   size: "normal",
                   style: props.state.style,
                   class:
-                    "min-w-[44px] max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group",
+                    "min-w-[44px] max-w-[220px] shrink-1 justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group",
                   classList: { "animate-in fade-in": props.state.shouldAnimate },
                   "data-action": "prompt-model",
                 }}
@@ -2350,7 +2350,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                 variant: "ghost-muted",
                 size: "normal",
                 style: props.state.style,
-                class: "min-w-[44px] max-w-[220px] justify-start ![font-weight:440] group",
+                class: "min-w-[44px] max-w-[220px] shrink-1 justify-start ![font-weight:440] group",
                 classList: { "animate-in fade-in": props.state.shouldAnimate },
                 "data-action": "prompt-model",
               }}
