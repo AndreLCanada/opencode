@@ -1,17 +1,13 @@
-[data-queue-target-trigger] {
+[data-component="prompt-toolbar"] {
   container-type: inline-size;
 }
 
-[data-queue-target-icon] {
-  display: none;
+[data-component="queue-target-label"] {
+  min-width: 0;
 }
 
-@container (max-width: 110px) {
-  [data-queue-target-label] {
+@container (max-width: 500px) {
+  [data-component="queue-target-label"] {
     display: none;
-  }
-
-  [data-queue-target-icon] {
-    display: inline-flex;
   }
 }

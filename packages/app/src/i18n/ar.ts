@@ -65,6 +65,8 @@ export const dict = {
   "command.agent.cycle.description": "التبديل إلى الوكيل التالي",
   "command.agent.cycle.reverse": "تغيير الوكيل للخلف",
   "command.agent.cycle.reverse.description": "التبديل إلى الوكيل السابق",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "تغيير جهد التفكير",
   "command.model.variant.cycle.description": "التبديل إلى مستوى الجهد التالي",
   "command.prompt.mode.shell": "Shell",

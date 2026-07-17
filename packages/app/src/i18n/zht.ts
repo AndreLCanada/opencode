@@ -75,6 +75,8 @@ export const dict = {
   "command.agent.cycle.description": "切換到下一個代理程式",
   "command.agent.cycle.reverse": "反向循環代理程式",
   "command.agent.cycle.reverse.description": "切換到上一個代理程式",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "循環思考強度",
   "command.model.variant.cycle.description": "切換到下一個強度等級",
   "command.prompt.mode.shell": "Shell",

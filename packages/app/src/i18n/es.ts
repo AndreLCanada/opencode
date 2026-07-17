@@ -71,6 +71,8 @@ export const dict = {
   "command.agent.cycle.description": "Cambiar al siguiente agente",
   "command.agent.cycle.reverse": "Alternar agente hacia atrás",
   "command.agent.cycle.reverse.description": "Cambiar al agente anterior",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Alternar esfuerzo de pensamiento",
   "command.model.variant.cycle.description": "Cambiar al siguiente nivel de esfuerzo",
   "command.prompt.mode.shell": "Shell",

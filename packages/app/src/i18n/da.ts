@@ -71,6 +71,8 @@ export const dict = {
   "command.agent.cycle.description": "Skift til næste agent",
   "command.agent.cycle.reverse": "Skift agent baglæns",
   "command.agent.cycle.reverse.description": "Skift til forrige agent",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Skift tænkeindsats",
   "command.model.variant.cycle.description": "Skift til næste indsatsniveau",
   "command.prompt.mode.shell": "Shell",

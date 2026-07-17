@@ -65,6 +65,8 @@ export const dict = {
   "command.agent.cycle.description": "次のエージェントに切り替え",
   "command.agent.cycle.reverse": "エージェントを逆順に切り替え",
   "command.agent.cycle.reverse.description": "前のエージェントに切り替え",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "思考レベルの切り替え",
   "command.model.variant.cycle.description": "次の思考レベルに切り替え",
   "command.prompt.mode.shell": "シェル",

@@ -71,6 +71,8 @@ export const dict = {
   "command.agent.cycle.description": "Перемкнути на наступного агента",
   "command.agent.cycle.reverse": "Перемкнути агента в зворотному напрямку",
   "command.agent.cycle.reverse.description": "Перемкнути на попереднього агента",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Перемкнути рівень мислення",
   "command.model.variant.cycle.description": "Перемкнути на наступний рівень зусилля",
   "command.prompt.mode.shell": "Команда",

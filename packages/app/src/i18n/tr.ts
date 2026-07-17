@@ -75,6 +75,8 @@ export const dict = {
   "command.agent.cycle.description": "Sonraki ajana geç",
   "command.agent.cycle.reverse": "Ajanı geri değiştir",
   "command.agent.cycle.reverse.description": "Önceki ajana geç",
+  "command.prompt.queueTarget.cycle": "Cycle queue target",
+  "command.prompt.queueTarget.cycle.description": "Switch when a queued message is sent",
   "command.model.variant.cycle": "Düşünme eforu değiştir",
   "command.model.variant.cycle.description": "Sonraki efor seviyesine geç",
   "command.prompt.mode.shell": "Kabuk",
