@@ -1715,7 +1715,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   </div>
                 </div>
               </div>
-              <div class="flex h-11 items-center px-2">
+              <div class="flex h-11 items-center gap-2 px-2">
                 <div class="flex min-w-0 flex-1 items-center gap-1 @container" data-component="prompt-toolbar">
                   {fileAttachmentInput()}
                   <TooltipV2
@@ -1770,8 +1770,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       class="[&_[data-action=prompt-model-variant]]:![font-weight:440]"
                       classList={{
                         "animate-in fade-in": providersShouldFadeIn(),
-                        "hidden group-hover/prompt-input:block group-focus-within/prompt-input:block":
-                          !props.controls.model.selection.variant.current() && !store.variantOpen,
                       }}
                     >
                       <TooltipV2
