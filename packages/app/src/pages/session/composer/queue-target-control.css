@@ -6,7 +6,7 @@
   min-width: 0;
 }
 
-@container (max-width: 500px) {
+@container (max-width: 300px) {
   [data-component="queue-target-label"] {
     display: none;
   }
