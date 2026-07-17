@@ -60,7 +60,7 @@ export function QueueTargetControl(props: {
           variant="ghost-muted"
           size="normal"
           data-component="queue-target-trigger"
-          class="max-w-[175px] min-w-[44px] shrink-[2] justify-start ![font-weight:440]"
+          class="max-w-[175px] min-w-[36px] shrink-[2] justify-start ![font-weight:440]"
         >
           <Icon name="bullet-list" size="small" />
           <span ref={labelRef} class="min-w-0 block truncate leading-5" data-component="queue-target-label">{labels[props.target]}</span>
