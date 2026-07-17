@@ -1716,7 +1716,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
               </div>
               <div class="flex h-11 items-center px-2">
-                <div class="flex min-w-0 flex-1 items-center gap-1 @container" data-component="prompt-toolbar">
+                <div class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden @container" data-component="prompt-toolbar">
                   {fileAttachmentInput()}
                   <TooltipV2
                     placement="top"
@@ -2261,6 +2261,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
           <TooltipV2
             placement="top"
             gutter={4}
+            class="min-w-0"
             value={
               <>
                 {props.state.title}
@@ -2276,7 +2277,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                   as="div"
                   variant="ghost"
                   size="normal"
-                  class="min-w-0 max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group"
+                  class="min-w-[44px] max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group"
                   classList={{ "animate-in fade-in": props.state.shouldAnimate }}
                   style={props.state.style}
                   onClick={props.state.onUnpaidClick}
@@ -2290,7 +2291,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                       />
                     )}
                   </Show>
-                  <span class="truncate">{props.state.modelName}</span>
+                  <span data-component="model-name" class="min-w-0 truncate">{props.state.modelName}</span>
                   <span class="-ml-1 shrink-0 flex size-fit">
                     <Icon name="chevron-down" size="small" class="text-v2-icon-icon-muted" />
                   </span>
@@ -2301,7 +2302,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                 data-action="prompt-model"
                 variant="ghost-muted"
                 size="normal"
-                class="min-w-0 max-w-[220px] justify-start ![font-weight:440] group"
+                class="min-w-[44px] max-w-[220px] justify-start ![font-weight:440] group"
                 classList={{ "animate-in fade-in": props.state.shouldAnimate }}
                 style={props.state.style}
                 onClick={props.state.onUnpaidClick}
@@ -2315,6 +2316,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
         <TooltipV2
           placement="top"
           gutter={4}
+          class="min-w-0"
           value={
             <>
               {props.state.title}
@@ -2333,7 +2335,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                   size: "normal",
                   style: props.state.style,
                   class:
-                    "min-w-0 max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group",
+                    "min-w-[44px] max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group",
                   classList: { "animate-in fade-in": props.state.shouldAnimate },
                   "data-action": "prompt-model",
                 }}
@@ -2350,7 +2352,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
                 variant: "ghost-muted",
                 size: "normal",
                 style: props.state.style,
-                class: "min-w-0 max-w-[220px] justify-start ![font-weight:440] group",
+                class: "min-w-[44px] max-w-[220px] justify-start ![font-weight:440] group",
                 classList: { "animate-in fade-in": props.state.shouldAnimate },
                 "data-action": "prompt-model",
               }}
