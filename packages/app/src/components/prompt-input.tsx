@@ -1716,7 +1716,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
               </div>
               <div class="flex h-11 items-center px-2">
-                <div class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden @container" data-component="prompt-toolbar">
+                <div class="flex min-w-0 flex-1 items-center gap-1 @container" data-component="prompt-toolbar">
                   {fileAttachmentInput()}
                   <TooltipV2
                     placement="top"
