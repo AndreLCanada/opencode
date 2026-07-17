@@ -2377,7 +2377,7 @@ function ModelControlContent(props: { state: ComposerModelControlState; v2?: boo
           />
         )}
       </Show>
-      <span class="truncate leading-4">{props.state.modelName}</span>
+      <span data-component="model-name" class="min-w-0 truncate leading-4">{props.state.modelName}</span>
       <span class={props.v2 ? "-ml-0.5 -mr-1 flex shrink-0" : "-ml-1 shrink-0 flex size-fit"}>
         <Icon name="chevron-down" size="small" class="text-v2-icon-icon-muted" />
       </span>
