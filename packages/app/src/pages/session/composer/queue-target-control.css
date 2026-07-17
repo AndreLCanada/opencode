@@ -11,4 +11,9 @@
   [data-component="model-name"] {
     display: none;
   }
+
+  [data-component="queue-target-trigger"] {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
 }
