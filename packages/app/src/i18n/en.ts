@@ -91,6 +91,13 @@ export const dict = {
   "command.session.share.description": "Share this session and copy the URL to clipboard",
   "command.session.unshare": "Unshare session",
   "command.session.unshare.description": "Stop sharing this session",
+  "command.session.schedule": "Schedule",
+  "command.session.schedule.description": "Schedule a recurring prompt",
+  "command.schedule.title": "Schedule a Task",
+  "command.schedule.frequency": "Frequency",
+  "command.schedule.prompt": "Prompt",
+  "command.schedule.add": "Schedule",
+  "command.schedule.existing": "Existing tasks",
 
   "palette.search.placeholder": "Search files, commands, and sessions",
   "palette.search.placeholder.home": "Search commands and sessions",

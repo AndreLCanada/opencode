@@ -24,6 +24,7 @@ import { useSettings } from "@/context/settings"
 import { createPromptInputController, createPromptProjectControls } from "@/pages/session/composer"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useComposerCommands } from "@/pages/session/use-composer-commands"
+import { useScheduledTasks } from "@/pages/session/scheduled-tasks"
 import { NEW_SESSION_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { PromptGitStatus, PromptWorkspaceSelector } from "@/components/prompt-workspace-selector"
 import { useTitlebarRightMount } from "@/components/titlebar"
@@ -67,6 +68,7 @@ export default function NewSessionPage() {
   const model = createPromptModelSelection({ agent: local.agent.current })
 
   useComposerCommands({ model })
+  useScheduledTasks()
 
   const inputController = createPromptInputController({
     sessionKey: route.sessionKey,
