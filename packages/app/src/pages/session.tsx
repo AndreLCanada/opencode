@@ -1919,7 +1919,7 @@ export default function Page() {
   const interruptFollowup = async (draft: FollowupDraft, messageID: string) => {
     await halt(draft.sessionID)
     await sendFollowupDraft({
-      client: sdk().client,
+      api: sdk().api.session,
       sync: sync(),
       serverSync: serverSync(),
       draft,

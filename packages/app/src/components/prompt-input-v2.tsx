@@ -6,14 +6,14 @@ import { Icon } from "@opencode-ai/ui/v2/icon"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import type { Prompt, ReferenceInfo } from "@opencode-ai/sdk/v2/client"
-import { createEffect, createMemo, on, Show } from "solid-js"
+import { createEffect, createMemo, on, Show, type Accessor } from "solid-js"
 import { ModelSelectorPopoverV2 } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaidV2 } from "@/components/dialog-select-model-unpaid-v2"
 import type { PromptInputProps } from "@/components/prompt-input/contracts"
 import { normalizePromptHistoryEntry, promptLength, type PromptHistoryComment } from "@/components/prompt-input/history"
 import { createPersistedPromptInputHistory } from "@/components/prompt-input/history-store"
 import { promptDesignPlaceholder, promptPlaceholder } from "@/components/prompt-input/placeholder"
-import { createPromptSubmit } from "@/components/prompt-input/submit"
+import { createPromptSubmit, type FollowupTarget } from "@/components/prompt-input/submit"
 import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/file"
 import { useComments } from "@/context/comments"
 import { useCommand } from "@/context/command"
@@ -44,6 +44,8 @@ export type PromptInputV2ComposerProps = {
 export type PromptInputV2ControllerProps = Omit<PromptInputProps, "class" | "edit" | "onEditLoaded" | "submission">
 export type PromptInputV2ComposerController = PromptInputV2Interaction & {
   readonly model: PromptInputProps["controls"]["model"]
+  readonly queueTarget?: Accessor<FollowupTarget>
+  readonly setQueueTarget?: (target: FollowupTarget) => void
 }
 
 export function PromptInputV2Composer(props: PromptInputV2ComposerProps) {
@@ -91,7 +93,7 @@ const useEditHandler = (props: PromptInputV2ComposerProps) => {
       (id) => {
         const edit = props.edit
         if (!id || !edit) return
-        props.setQueueTarget?.(edit.target ?? "followup")
+        props.controller.setQueueTarget?.(edit.target ?? "followup")
         prompt.context.items().forEach((item) => prompt.context.remove(item.key))
         edit.context.forEach((item) =>
           prompt.context.add({
@@ -475,6 +477,8 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     },
   })
   Object.defineProperty(controller, "model", { get: () => props.controls.model })
+  Object.defineProperty(controller, "setQueueTarget", { get: () => props.setQueueTarget })
+  Object.defineProperty(controller, "queueTarget", { get: () => props.queueTarget })
   return controller as PromptInputV2ComposerController
 }
 

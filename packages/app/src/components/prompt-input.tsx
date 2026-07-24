@@ -1626,7 +1626,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       </DockShellForm>
       <Show when={store.mode === "normal" || store.mode === "shell"}>
         <DockTray attach="top">
-          <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0">
+          <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0" data-component="prompt-toolbar">
             <div class="flex items-center gap-1.5 min-w-0 flex-1 relative">
               <div
                 class="h-7 flex items-center gap-1.5 min-w-0 absolute inset-0"
@@ -1710,7 +1710,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                   style={{ "will-change": "opacity", transform: "translateZ(0)" }}
                                 />
                               </Show>
-                              <span class="truncate">
+                              <span class="truncate" data-component="model-name">
                                 {props.controls.model.selection.current()?.name ??
                                   language.t("dialog.model.select.title")}
                               </span>
@@ -1744,7 +1744,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                 style={{ "will-change": "opacity", transform: "translateZ(0)" }}
                               />
                             </Show>
-                            <span class="truncate">
+                            <span class="truncate" data-component="model-name">
                               {props.controls.model.selection.current()?.name ??
                                 language.t("dialog.model.select.title")}
                             </span>

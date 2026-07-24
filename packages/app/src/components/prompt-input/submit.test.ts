@@ -605,12 +605,10 @@ describe("sendFollowupDraft", () => {
     const syncSetCalls: unknown[] = []
     const serverSyncSetCalls: unknown[] = []
 
-    const client = {
-      session: {
-        promptAsync: async (input: unknown) => {
-          promptAsyncCalls.push(input)
-          return { data: undefined }
-        },
+    const api = {
+      prompt: async (input: unknown) => {
+        promptAsyncCalls.push(input)
+        return { data: undefined }
       },
     }
 
@@ -635,7 +633,7 @@ describe("sendFollowupDraft", () => {
     }
 
     await sendFollowupDraft({
-      client: client as never,
+      api: api as never,
       sync: sync as never,
       serverSync: serverSync as never,
       draft: {
