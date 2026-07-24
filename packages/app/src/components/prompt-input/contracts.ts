@@ -1,6 +1,6 @@
 import type { useLocal } from "@/context/local"
 import type { Prompt, usePrompt } from "@/context/prompt"
-import type { Accessor, JSX } from "solid-js"
+import type { Accessor } from "solid-js"
 import type { PromptInputHistory } from "./history-store"
 import type { FollowupDraft, FollowupTarget } from "./submit"
 
@@ -58,5 +58,4 @@ export interface PromptInputProps {
   onInterrupt?: (draft: FollowupDraft, messageID: string) => void | Promise<void>
   onAbort?: () => void
   onSubmit?: () => void
-  toolbar?: JSX.Element
 }

@@ -2387,11 +2387,6 @@ export default function Page() {
                         if (!id) return
                         setFollowup("paused", id, true)
                       }}
-                      toolbar={
-                        params.id && !isChildSession() && queueEnabled() ? (
-                          <QueueTargetControl target={queueTarget()} onChange={persistQueueTarget} keybind={command.keybindParts("prompt.queueTarget.cycle")} />
-                        ) : undefined
-                      }
                     />
                   }
                 >

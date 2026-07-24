@@ -187,7 +187,7 @@ const defaultSettings: Settings = {
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showCustomAgents: false,
-    showQueueControls: true,
+    showQueueControls: false,
     mobileTitlebarPosition: "top",
   },
   appearance: {
