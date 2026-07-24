@@ -108,8 +108,17 @@ export function useScheduledTasks() {
 
   async function runTask(task: ScheduledTask, directory: string) {
     try {
-      const client = sdk().client
-      const created = await client.session.create().then((x) => x.data)
+      const messageID = `scheduled_${task.id}_${Date.now()}`
+      const created = await sdk()
+        .api.session.create({
+          agent: task.agent,
+          model: { id: task.model.modelID, providerID: task.model.providerID },
+          location: { directory },
+        })
+        .catch((err) => {
+          console.error("Scheduled task failed to create session:", task.id, err)
+          return undefined
+        })
       if (!created) return
 
       setState("tasks", (t) => t.id === task.id, "lastRun", Date.now())
@@ -123,19 +132,18 @@ export function useScheduledTasks() {
       layout.handoff.setTabs(encoded, created.id)
       navigate(`/${encoded}/session/${created.id}`)
 
-      await client.session.promptAsync({
-        sessionID: created.id,
-        agent: task.agent,
-        model: task.model,
-        messageID: `scheduled_${created.id}_${Date.now()}`,
-        parts: [
-          {
-            id: `part_${created.id}_${Date.now()}`,
-            type: "text",
-            text: task.prompt,
-          },
-        ],
-      })
+      await sdk()
+        .api.session.prompt({
+          sessionID: created.id,
+          id: messageID,
+          agent: task.agent,
+          model: task.model,
+          text: task.prompt,
+          legacyParts: [{ type: "text", text: task.prompt }],
+        })
+        .catch((err) => {
+          console.error("Scheduled task failed to send prompt:", task.id, err)
+        })
 
       notify(task.prompt)
     } catch (err) {
