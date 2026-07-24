@@ -96,9 +96,7 @@ export function useScheduledTasks() {
         const expr = CronExpressionParser.parse(t.cron)
         const afterLast = t.lastRun ?? 0
         const prev = expr.prev()
-        if (!prev || prev.getTime() <= afterLast) return false
-        const next = expr.next()
-        return next && next.getTime() <= now
+        return prev && prev.getTime() > afterLast && prev.getTime() <= now
       } catch {
         return false
       }
@@ -148,7 +146,7 @@ export function useScheduledTasks() {
   return {
     tasks: () => state.tasks,
     add(task: Omit<ScheduledTask, "id" | "lastRun" | "enabled" | "createdAt">) {
-      setState("tasks", [...state.tasks, { ...task, id: nextId(), lastRun: null, enabled: true, createdAt: Date.now() }])
+      setState("tasks", [...state.tasks, { ...task, id: nextId(), lastRun: Date.now(), enabled: true, createdAt: Date.now() }])
     },
     remove(id: string) {
       setState("tasks", state.tasks.filter((t) => t.id !== id))
@@ -236,7 +234,7 @@ export function ScheduleDialog() {
         <Show when={freq() !== "custom"}>
           <div class="flex gap-3">
             <Field class="flex-1">
-              <Field.Label>Hour</Field.Label>
+              <Field.Label>{language.t("command.schedule.hour")}</Field.Label>
               <SelectV2
                 class="!w-full"
                 options={HOURS}
@@ -247,7 +245,7 @@ export function ScheduleDialog() {
               />
             </Field>
             <Field class="flex-1">
-              <Field.Label>Minute</Field.Label>
+              <Field.Label>{language.t("command.schedule.minute")}</Field.Label>
               <SelectV2
                 class="!w-full"
                 options={MINUTES}
@@ -257,6 +255,9 @@ export function ScheduleDialog() {
                 onSelect={(v) => v && setMinute(v.value)}
               />
             </Field>
+          </div>
+          <div class="text-[12px] text-v2-text-text-muted mt-1">
+            {language.t("command.schedule.localTime")}
           </div>
         </Show>
 
