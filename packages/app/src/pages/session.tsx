@@ -91,6 +91,7 @@ import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@
 import { TerminalPanel } from "@/pages/session/terminal-panel"
 import { TerminalPanelV2 } from "@/pages/session/terminal-panel-v2"
 import { useComposerCommands } from "@/pages/session/use-composer-commands"
+import { useScheduledTasks } from "@/pages/session/scheduled-tasks"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
 import { Identifier } from "@/utils/id"
@@ -1136,6 +1137,7 @@ export default function Page() {
   }
 
   useComposerCommands()
+  useScheduledTasks()
   useSessionCommands({
     navigateMessageByOffset,
     setActiveMessage,

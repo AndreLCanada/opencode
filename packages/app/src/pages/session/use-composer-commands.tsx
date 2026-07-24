@@ -23,6 +23,7 @@ export const useComposerCommands = (input: { model?: ModelSelection } = {}) => {
   const model = input.model ?? local.model
   const modelCommand = withCategory(language.t("command.category.model"))
   const agentCommand = withCategory(language.t("command.category.agent"))
+  const sessionCommand = withCategory(language.t("command.category.session"))
 
   const chooseModel = async () => {
     const owner = sessionOwnership.capture()
@@ -78,6 +79,16 @@ export const useComposerCommands = (input: { model?: ModelSelection } = {}) => {
       keybind: "shift+mod+.",
       disabled: !local.agent.visible(),
       onSelect: () => local.agent.move(-1),
+    }),
+    sessionCommand({
+      id: "session.schedule",
+      title: language.t("command.session.schedule"),
+      description: language.t("command.session.schedule.description"),
+      slash: "schedule",
+      onSelect: async () => {
+        const { ScheduleDialog } = await import("./scheduled-tasks")
+        dialog.show(() => <ScheduleDialog />)
+      },
     }),
   ])
 }
