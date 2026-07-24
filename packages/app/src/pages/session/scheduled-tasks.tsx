@@ -11,6 +11,7 @@ import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { Field } from "@opencode-ai/ui/v2/field-v2"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { useSDK } from "@/context/sdk"
+import { Identifier } from "@/utils/id"
 import { useServerSDK } from "@/context/server-sdk"
 import { useLocal } from "@/context/local"
 import { useLayout } from "@/context/layout"
@@ -108,7 +109,7 @@ export function useScheduledTasks() {
 
   async function runTask(task: ScheduledTask, directory: string) {
     try {
-      const messageID = `scheduled_${task.id}_${Date.now()}`
+      const messageID = Identifier.ascending("message")
       const created = await sdk()
         .api.session.create({
           agent: task.agent,
