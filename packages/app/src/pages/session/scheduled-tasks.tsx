@@ -224,6 +224,7 @@ export function ScheduleDialog() {
         <Field>
           <Field.Label>{language.t("command.schedule.frequency")}</Field.Label>
           <SelectV2
+            class="!w-full"
             options={frequencies}
             value={(o) => o.value}
             label={(o) => o.label}
@@ -237,6 +238,7 @@ export function ScheduleDialog() {
             <Field class="flex-1">
               <Field.Label>Hour</Field.Label>
               <SelectV2
+                class="!w-full"
                 options={HOURS}
                 value={(o) => String(o.value)}
                 label={(o) => o.label}
@@ -247,6 +249,7 @@ export function ScheduleDialog() {
             <Field class="flex-1">
               <Field.Label>Minute</Field.Label>
               <SelectV2
+                class="!w-full"
                 options={MINUTES}
                 value={(o) => String(o.value)}
                 label={(o) => o.label}
@@ -261,6 +264,7 @@ export function ScheduleDialog() {
           <Field>
             <Field.Label>Day of week</Field.Label>
             <SelectV2
+              class="!w-full"
               options={DAYS_OF_WEEK.map((label, i) => ({ label, value: i }))}
               value={(o) => String(o.value)}
               label={(o) => o.label}
@@ -274,6 +278,7 @@ export function ScheduleDialog() {
           <Field>
             <Field.Label>Day of month</Field.Label>
             <SelectV2
+              class="!w-full"
               options={DAYS_OF_MONTH}
               value={(o) => String(o.value)}
               label={(o) => o.label}
@@ -287,6 +292,8 @@ export function ScheduleDialog() {
           <Field>
             <Field.Label>Cron expression</Field.Label>
             <TextInputV2
+              class="!w-full"
+              appearance="large"
               value={customCron()}
               placeholder="0 9 * * *"
               onInput={(e) => setCustomCron(e.currentTarget.value)}
