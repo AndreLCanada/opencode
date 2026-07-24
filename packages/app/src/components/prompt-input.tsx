@@ -1786,6 +1786,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </Show>
               </div>
             </div>
+            <Show when={props.toolbar}>{props.toolbar}</Show>
           </div>
         </DockTray>
       </Show>

@@ -2428,6 +2428,11 @@ export default function Page() {
                         borderUnderlay
                         edit={editingFollowup()}
                         onEditLoaded={clearFollowupEdit}
+                        toolbar={
+                          params.id && !isChildSession() && queueEnabled() ? (
+                            <QueueTargetControl target={queueTarget()} onChange={persistQueueTarget} keybind={command.keybindParts("prompt.queueTarget.cycle")} />
+                          ) : undefined
+                        }
                       />
                     )
                   }}

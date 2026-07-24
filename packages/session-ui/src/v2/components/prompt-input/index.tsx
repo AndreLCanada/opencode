@@ -39,6 +39,7 @@ export type PromptInputV2Props = {
   borderUnderlay?: boolean
   class?: string
   modelControl?: JSX.Element
+  toolbar?: JSX.Element
   attachKeybind?: string[]
   attachShortcut?: string
 }
@@ -190,6 +191,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
         </div>
 
         <div class="flex h-11 items-center px-2">
+          <Show when={props.toolbar}>{props.toolbar}</Show>
           <div
             class="flex min-w-0 flex-1 items-center gap-1"
             aria-hidden={state.mode === "shell"}
