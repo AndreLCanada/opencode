@@ -39,6 +39,7 @@ export type PromptInputV2Props = {
   borderUnderlay?: boolean
   class?: string
   modelControl?: JSX.Element
+  toolbar?: JSX.Element
   attachKeybind?: string[]
   attachShortcut?: string
 }
@@ -189,9 +190,10 @@ export function PromptInputV2(props: PromptInputV2Props) {
           </Show>
         </div>
 
-        <div class="flex h-11 items-center px-2">
+        <div class="flex h-11 items-center gap-2 px-2">
           <div
-            class="flex min-w-0 flex-1 items-center gap-1"
+            class="flex min-w-0 flex-1 items-center gap-1 @container"
+            data-component="prompt-toolbar"
             aria-hidden={state.mode === "shell"}
             inert={state.mode === "shell" ? true : undefined}
             style={buttons()}
@@ -215,6 +217,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
                 <PromptInputV2ConfiguredSelect title="Choose agent" keybind={["Mod", "."]} control={control()} />
               )}
             </Show>
+            <Show when={props.toolbar}>{props.toolbar}</Show>
             <Show
               when={props.modelControl}
               fallback={

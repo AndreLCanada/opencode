@@ -9,9 +9,6 @@ import {
   createMemo,
   createSignal,
   createResource,
-  Switch,
-  Match,
-  type JSX,
 } from "solid-js"
 import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/file"
 import {
@@ -34,12 +31,6 @@ import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
 import { Icon } from "@opencode-ai/ui/icon"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
-import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
-import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Select } from "@opencode-ai/ui/select"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -77,7 +68,7 @@ import { PromptPopover, type AtOption, type SlashCommand } from "./prompt-input/
 import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
-import { promptDesignPlaceholder, promptPlaceholder } from "./prompt-input/placeholder"
+import { promptPlaceholder } from "./prompt-input/placeholder"
 import { createPromptInputTransientState } from "./prompt-input/transient-state"
 import { showToast } from "@/utils/toast"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
@@ -1111,6 +1102,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       (id) => {
         const edit = props.edit
         if (!id || !edit) return
+        props.setQueueTarget?.(edit.target ?? "followup")
 
         for (const item of prompt.context.items()) {
           prompt.context.remove(item.key)
@@ -1223,7 +1215,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       newSessionWorktree: () => props.newSessionWorktree,
       onNewSessionWorktreeReset: props.onNewSessionWorktreeReset,
       shouldQueue: props.shouldQueue,
+      queueTarget: props.queueTarget,
       onQueue: props.onQueue,
+      onInterrupt: props.onInterrupt,
       onAbort: props.onAbort,
       onSubmit: props.onSubmit,
       model: props.controls.model.selection,
@@ -1622,7 +1616,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       </DockShellForm>
       <Show when={store.mode === "normal" || store.mode === "shell"}>
         <DockTray attach="top">
-          <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0">
+          <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0" data-component="prompt-toolbar">
             <div class="flex items-center gap-1.5 min-w-0 flex-1 relative">
               <div
                 class="h-7 flex items-center gap-1.5 min-w-0 absolute inset-0"
@@ -1706,7 +1700,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                   style={{ "will-change": "opacity", transform: "translateZ(0)" }}
                                 />
                               </Show>
-                              <span class="truncate">
+                              <span class="truncate" data-component="model-name">
                                 {props.controls.model.selection.current()?.name ??
                                   language.t("dialog.model.select.title")}
                               </span>
@@ -1740,7 +1734,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                 style={{ "will-change": "opacity", transform: "translateZ(0)" }}
                               />
                             </Show>
-                            <span class="truncate">
+                            <span class="truncate" data-component="model-name">
                               {props.controls.model.selection.current()?.name ??
                                 language.t("dialog.model.select.title")}
                             </span>

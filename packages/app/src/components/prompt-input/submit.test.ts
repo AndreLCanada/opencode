@@ -4,6 +4,7 @@ import type { Prompt, PromptStore } from "@/context/prompt"
 import type { ModelSelection } from "@/context/local"
 
 let createPromptSubmit: typeof import("./submit").createPromptSubmit
+let sendFollowupDraft: typeof import("./submit").sendFollowupDraft
 
 const createdClients: string[] = []
 const createdSessions: string[] = []
@@ -276,6 +277,7 @@ beforeAll(async () => {
 
   const mod = await import("./submit")
   createPromptSubmit = mod.createPromptSubmit
+  sendFollowupDraft = mod.sendFollowupDraft
 })
 
 beforeEach(() => {
@@ -594,5 +596,72 @@ describe("prompt submit worktree selection", () => {
     expect(storedSessions["/repo/worktree-a"]).toHaveLength(1)
     expect(storedSessions["/repo/worktree-a"]?.[0]).toMatchObject({ id: "session-1", title: "New session 1" })
     expect(optimisticSeeded).toEqual([true])
+  })
+})
+
+describe("sendFollowupDraft", () => {
+  test("injects a current-stream follow-up without interrupting and sets local sync busy", async () => {
+    const promptAsyncCalls: unknown[] = []
+    const syncSetCalls: unknown[] = []
+    const serverSyncSetCalls: unknown[] = []
+
+    const api = {
+      prompt: async (input: unknown) => {
+        promptAsyncCalls.push(input)
+        return { data: undefined }
+      },
+    }
+
+    const sync = {
+      set: (key: string, sessionID: string, value: unknown) => {
+        syncSetCalls.push({ key, sessionID, value })
+      },
+      session: {
+        optimistic: {
+          add: () => undefined,
+          remove: () => undefined,
+        },
+      },
+    }
+
+    const serverSync = {
+      session: {
+        set: (key: string, sessionID: string, value: unknown) => {
+          serverSyncSetCalls.push({ key, sessionID, value })
+        },
+      },
+    }
+
+    await sendFollowupDraft({
+      api: api as never,
+      sync: sync as never,
+      serverSync: serverSync as never,
+      draft: {
+        sessionID: "session-1",
+        sessionDirectory: "/repo/main",
+        prompt: [{ type: "text", content: "hello", start: 0, end: 5 }],
+        context: [],
+        agent: "agent",
+        model: { providerID: "provider", modelID: "model" },
+        target: "current-stream",
+      },
+      optimisticBusy: true,
+    })
+
+    expect(promptAsyncCalls).toHaveLength(1)
+    expect(promptAsyncCalls[0]).toMatchObject({
+      sessionID: "session-1",
+      delivery: "steer",
+    })
+    expect(syncSetCalls).toContainEqual({
+      key: "session_status",
+      sessionID: "session-1",
+      value: { type: "busy" },
+    })
+    expect(serverSyncSetCalls).toContainEqual({
+      key: "session_status",
+      sessionID: "session-1",
+      value: { type: "busy" },
+    })
   })
 })
