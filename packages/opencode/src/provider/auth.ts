@@ -173,6 +173,7 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
               .map((_, index) => ({
                 type: "api" as const,
                 label: `Stored API key ${index + 1}`,
+                prompts: [],
               })),
           ]
         } catch {}
