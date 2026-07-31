@@ -794,7 +794,8 @@ function ProviderConnection(props: {
   }
 
   function ApiAuthView() {
-    let apiKey: HTMLInputElement | HTMLTextAreaElement | undefined
+    let apiKey: HTMLInputElement | undefined
+    let apiKeys: HTMLTextAreaElement | undefined
     const errorID = createUniqueId()
     const [formStore, setFormStore] = createStore({
       value: "",
@@ -803,7 +804,8 @@ function ProviderConnection(props: {
 
     onMount(() => {
       if (!newLayout()) return
-      apiKey?.focus({ preventScroll: true })
+      const focus = apiKey ?? apiKeys
+      focus?.focus({ preventScroll: true })
     })
 
     async function handleSubmit(e: SubmitEvent) {
@@ -877,7 +879,7 @@ function ProviderConnection(props: {
                 }
               >
                 <textarea
-                  ref={(element) => (apiKey = element)}
+                  ref={apiKeys}
                   class="w-full min-h-24 rounded border border-v2-border-border-base bg-v2-surface-surface-raised px-3 py-2 outline-none focus:border-v2-border-border-focus"
                   name="apiKey"
                   data-input="provider-api-key"

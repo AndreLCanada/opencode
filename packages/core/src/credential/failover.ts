@@ -7,6 +7,7 @@ export type CredentialState = {
 
 export type Pool = {
   readonly next: (now?: number) => CredentialState | undefined
+  readonly release: (id: string) => void
   readonly penalize: (id: string, retryAfter?: number, now?: number) => void
 }
 
@@ -27,6 +28,9 @@ export function makePool(credentials: readonly CredentialState[], clock = () => 
         reserved.add(entry.id)
         return { ...entry }
       }
+    },
+    release(id) {
+      reserved.delete(id)
     },
     penalize(id, retryAfter = 0, now = clock()) {
       const entry = entries.find((candidate) => candidate.id === id)
@@ -56,9 +60,19 @@ export function eligible(error: unknown) {
   const status = "statusCode" in data && typeof data.statusCode === "number" ? data.statusCode : undefined
   if (status === 401 || status === 402 || status === 403 || status === 429) return true
   const text = JSON.stringify(data).toLowerCase()
-  return ["rate limit", "rate_limit", "quota", "balance", "usage limit", "usage_limit", "exhausted"].some((term) =>
-    text.includes(term),
-  )
+  return [
+    "rate limit",
+    "rate_limit",
+    "quota",
+    "balance",
+    "usage limit",
+    "usage_limit",
+    "exhausted",
+    "authentication",
+    "unauthorized",
+    "invalid api key",
+    "forbidden",
+  ].some((term) => text.includes(term))
 }
 
 export function matchingModel<T extends { readonly id: string }>(models: readonly T[], id: string, fallback?: T) {

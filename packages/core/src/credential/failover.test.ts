@@ -7,6 +7,8 @@ describe("credential failover pool", () => {
     expect(pool.next()?.id).toBe("a")
     expect(pool.next()?.id).toBe("b")
     expect(pool.next()?.id).toBeUndefined()
+    pool.release("a")
+    expect(pool.next()?.id).toBe("a")
   })
 
   test("honors cooldown and Retry-After", () => {
@@ -27,6 +29,7 @@ describe("credential failover pool", () => {
   test("recognizes quota and authentication failures", () => {
     expect(eligible({ data: { statusCode: 429 } })).toBe(true)
     expect(eligible({ data: { message: "balance exhausted" } })).toBe(true)
+    expect(eligible({ data: { message: "authentication failed" } })).toBe(true)
     expect(eligible({ data: { statusCode: 500, message: "unrelated" } })).toBe(false)
   })
 
