@@ -92,12 +92,15 @@ const live: Layer.Layer<
         mode: input.agent.mode,
       })
 
-      const [language, cfg, item, info] = yield* Effect.all(
+      const info = yield* auth.get(input.model.providerID)
+      const [language, cfg, item] = yield* Effect.all(
         [
-          provider.getLanguage(input.model),
+          provider.getLanguage(
+            input.model,
+            info?.type === "api" ? info.key : info?.type === "oauth" ? info.access : undefined,
+          ),
           config.get(),
           provider.getProvider(input.model.providerID),
-          auth.get(input.model.providerID),
         ],
         { concurrency: "unbounded" },
       )
