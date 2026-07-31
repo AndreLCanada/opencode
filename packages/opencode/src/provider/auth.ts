@@ -41,7 +41,6 @@ const Prompt = Schema.Union([TextPrompt, SelectPrompt])
 export class Method extends Schema.Class<Method>("ProviderAuthMethod")({
   type: Schema.Literals(["oauth", "api"]),
   label: Schema.String,
-  credentialID: Schema.optional(Schema.String),
   prompts: optional(Schema.Array(Prompt)),
 }) {}
 
@@ -174,7 +173,6 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
               .map((_, index) => ({
                 type: "api" as const,
                 label: `Stored API key ${index + 1}`,
-                credentialID: `${providerID}:${index}`,
               })),
           ]
         } catch {}
