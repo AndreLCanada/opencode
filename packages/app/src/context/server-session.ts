@@ -935,8 +935,13 @@ export function createServerSession(
   }
 
   const applyV2 = (event: OpenCodeEvent) => {
-    if (!("data" in event) || !("sessionID" in event.data) || typeof event.data.sessionID !== "string") return
-    const sessionID = event.data.sessionID
+    const raw = event as unknown as {
+      data?: { sessionID?: string }
+      properties?: { sessionID?: string }
+    }
+    const payload = raw.data ?? raw.properties
+    if (!payload || !("sessionID" in payload) || typeof payload.sessionID !== "string") return
+    const sessionID = payload.sessionID
     const reduction = v2.reduce(data.session_message[sessionID] ?? [], event)
     if (reduction) {
       projectV2(reduction)
@@ -957,6 +962,24 @@ export function createServerSession(
       })
     if (event.type === "session.usage.updated" && info)
       remember({ ...info, cost: event.data.cost, tokens: event.data.tokens })
+    if ((event.type as string) === "session.next.model.switched" && info) {
+      const native = event as typeof event & {
+        created?: number
+        properties?: { timestamp?: number; model: { id: string; providerID: string; variant?: string } }
+        data?: { model: { id: string; providerID: string; variant?: string } }
+      }
+      const model = native.data?.model ?? native.properties?.model
+      if (!model) return
+      remember({
+        ...info,
+        model: {
+          id: model.id,
+          providerID: model.providerID,
+          variant: model.variant,
+        },
+        time: { ...info.time, updated: native.created ?? native.properties?.timestamp ?? Date.now() },
+      })
+    }
     // if (event.type === "session.archived") {
     //   if (info) remember({ ...info, time: { ...info.time, archived: event.created, updated: event.created } })
     //   evict([sessionID])

@@ -20,6 +20,7 @@ import { Credential } from "./credential"
 import { State } from "./state"
 import { EventV2 } from "./event"
 import { IntegrationConnection } from "./integration/connection"
+import { CredentialFailover } from "./credential/failover"
 
 export const ID = Integration.ID
 export type ID = Integration.ID
@@ -145,7 +146,14 @@ export interface Interface extends State.Transformable<Draft> {
   readonly list: () => Effect.Effect<Info[]>
   readonly connection: {
     /** Returns the active connection for one integration. */
-    readonly active: (id: ID) => Effect.Effect<IntegrationConnection.Info | undefined>
+    readonly active: (
+      id: ID,
+      owner?: string,
+    ) => Effect.Effect<IntegrationConnection.Info | undefined>
+    /** Places the last selected stored credential on cooldown after a provider failure. */
+    readonly cooldown: (id: ID, owner: string, retryAfterMs?: number) => Effect.Effect<void>
+    /** Releases the current credential reservation after a provider turn. */
+    readonly release: (id: ID, owner: string) => Effect.Effect<void>
     /** Resolves a connection into usable credential material. */
     readonly resolve: (
       connection: IntegrationConnection.Info,
@@ -225,6 +233,8 @@ export const locationLayer = Layer.effect(
     const events = yield* EventV2.Service
     const scope = yield* Scope.Scope
     const attempts = SynchronizedRef.makeUnsafe(new Map<AttemptID, AttemptEntry>())
+    const pools = new Map<ID, { ids: string; pool: CredentialFailover.Pool }>()
+    const selection = new Map<string, Credential.ID>()
     const state = State.create<Data, Draft>({
       initial: () => ({ integrations: new Map<ID, Entry>() }),
       draft: (draft) => ({
@@ -378,9 +388,44 @@ export const locationLayer = Layer.effect(
         ).toSorted((a, b) => a.name.localeCompare(b.name))
       }),
       connection: {
-        active: Effect.fn("Integration.connection.active")(function* (id) {
+        active: Effect.fn("Integration.connection.active")(function* (id, owner = "legacy") {
           const entry = state.get().integrations.get(id)
-          return resolveConnections(entry, yield* credentials.list(id))[0]
+          const connections = resolveConnections(entry, yield* credentials.list(id))
+          const credentialIDs = connections
+            .filter((connection): connection is Extract<typeof connection, { type: "credential" }> => connection.type === "credential")
+            .map((connection) => connection.id)
+          if (credentialIDs.length === 0) return connections[0]
+          const ownerKey = `${id}:${owner}`
+          const existing = selection.get(ownerKey)
+          if (existing) {
+            const connection = connections.find((item) => item.type === "credential" && item.id === existing)
+            if (connection) return connection
+            selection.delete(ownerKey)
+          }
+          const ids = credentialIDs.join(",")
+          let entryPool = pools.get(id)
+          if (!entryPool || entryPool.ids !== ids) {
+            entryPool = { ids, pool: CredentialFailover.makePool(credentialIDs.map((credentialID) => ({ id: credentialID }))) }
+            pools.set(id, entryPool)
+          }
+          const selected = entryPool.pool.next(yield* Clock.currentTimeMillis)
+          if (!selected) return
+          const connection = connections.find((connection) => connection.type === "credential" && connection.id === selected.id)
+          if (owner === "legacy") entryPool.pool.release(selected.id)
+          else selection.set(ownerKey, Credential.ID.make(selected.id))
+          return connection
+        }),
+        cooldown: Effect.fn("Integration.connection.cooldown")(function* (id, owner, retryAfterMs = 0) {
+          const selected = selection.get(`${id}:${owner}`)
+          if (!selected) return
+          pools.get(id)?.pool.penalize(selected, retryAfterMs, yield* Clock.currentTimeMillis)
+        }),
+        release: Effect.fn("Integration.connection.release")(function* (id, owner) {
+          const key = `${id}:${owner}`
+          const selected = selection.get(key)
+          if (!selected) return
+          pools.get(id)?.pool.release(selected)
+          selection.delete(key)
         }),
         resolve: Effect.fn("Integration.connection.resolve")(function* (connection) {
           if (connection.type === "env") {

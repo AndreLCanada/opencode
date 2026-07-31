@@ -8,6 +8,8 @@ import { FSUtil } from "@opencode-ai/core/fs-util"
 export const OAUTH_DUMMY_KEY = "opencode-oauth-dummy-key"
 
 const file = path.join(Global.Path.data, "auth.json")
+const multiKeyProviders = new Set(["opencode", "opencode-go"])
+const rotations = new Map<string, number>()
 
 const fail = (message: string) => (cause: unknown) => new AuthError({ message, cause })
 
@@ -45,6 +47,7 @@ export interface Interface {
   readonly all: () => Effect.Effect<Record<string, Info>, AuthError>
   readonly set: (key: string, info: Info) => Effect.Effect<void, AuthError>
   readonly remove: (key: string) => Effect.Effect<void, AuthError>
+  readonly removeKey: (providerID: string, index: number) => Effect.Effect<void, AuthError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Auth") {}
@@ -67,7 +70,13 @@ const layer = Layer.effect(
     })
 
     const get = Effect.fn("Auth.get")(function* (providerID: string) {
-      return (yield* all())[providerID]
+      const info = (yield* all())[providerID]
+      if (!info || info.type !== "api" || !multiKeyProviders.has(providerID)) return info
+      const keys = parseKeys(info)
+      if (keys.length === 0) return info
+      const index = rotations.get(providerID) ?? 0
+      rotations.set(providerID, (index + 1) % keys.length)
+      return new Api({ ...info, key: keys[index % keys.length] })
     })
 
     const set = Effect.fn("Auth.set")(function* (key: string, info: Info) {
@@ -75,8 +84,15 @@ const layer = Layer.effect(
       const data = yield* all()
       if (norm !== key) delete data[key]
       delete data[norm + "/"]
+      const stored =
+        info.type === "api" && multiKeyProviders.has(norm)
+          ? new Api({
+              ...info,
+              metadata: { ...info.metadata, keys: JSON.stringify(uniqueKeys(parseKeys(data[norm]), info.key)) },
+            })
+          : info
       yield* fsys
-        .writeJson(file, { ...data, [norm]: info }, 0o600)
+        .writeJson(file, { ...data, [norm]: stored }, 0o600)
         .pipe(Effect.mapError(fail("Failed to write auth data")))
     })
 
@@ -88,10 +104,46 @@ const layer = Layer.effect(
       yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
     })
 
-    return Service.of({ get, all, set, remove })
+    const removeKey = Effect.fn("Auth.removeKey")(function* (providerID: string, index: number) {
+      const data = yield* all()
+      const info = data[providerID]
+      if (!info || info.type !== "api") return
+      const keys = parseKeys(info).filter((_, current) => current !== index)
+      if (keys.length === 0) {
+        delete data[providerID]
+      } else {
+        data[providerID] = new Api({
+          ...info,
+          key: keys[0],
+          metadata: { ...info.metadata, keys: JSON.stringify(keys) },
+        })
+      }
+      yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
+    })
+
+    return Service.of({ get, all, set, remove, removeKey })
   }),
 )
 
 export const node = LayerNode.make({ service: Service, layer: layer, deps: [FSUtil.node] })
+
+function parseKeys(value: unknown) {
+  if (!value || typeof value !== "object") return []
+  if ("metadata" in value && value.metadata && typeof value.metadata === "object" && "keys" in value.metadata) {
+    const raw = value.metadata.keys
+    if (typeof raw === "string") {
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (Array.isArray(parsed)) return parsed.filter((key): key is string => typeof key === "string")
+      } catch {}
+    }
+  }
+  if ("key" in value && typeof value.key === "string") return [value.key]
+  return []
+}
+
+function uniqueKeys(existing: readonly string[], next: string) {
+  return existing.includes(next) ? [...existing] : [...existing, next]
+}
 
 export * as Auth from "."

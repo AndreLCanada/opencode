@@ -1,8 +1,11 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
+import { CredentialFailover } from "@opencode-ai/core/credential/failover"
+import { SessionEvent } from "@opencode-ai/core/session/event"
+import { SessionMessage } from "@opencode-ai/core/session/message"
 import { Image } from "@/image/image"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
-import { Cause, Deferred, Effect, Exit, Layer, Context, Scope, Schema } from "effect"
+import { Cause, DateTime, Deferred, Effect, Exit, Layer, Context, Scope, Schema } from "effect"
 import * as Stream from "effect/Stream"
 import { Agent } from "@/agent/agent"
 import { Config } from "@/config/config"
@@ -18,7 +21,8 @@ import type { SessionID } from "./schema"
 import { SessionRetry } from "./retry"
 import { SessionStatus } from "./status"
 import { SessionSummary } from "./summary"
-import type { Provider } from "@/provider/provider"
+import { Provider } from "@/provider/provider"
+import { Auth } from "@/auth"
 import { Question } from "@/question"
 import { errorMessage } from "@/util/error"
 import { isRecord } from "@/util/record"
@@ -94,6 +98,8 @@ const layer = Layer.effect(
     const image = yield* Image.Service
     const events = yield* EventV2Bridge.Service
     const database = yield* Database.Service
+    const providers = yield* Provider.Service
+    const auth = yield* Auth.Service
 
     const create = Effect.fn("SessionProcessor.create")(function* (input: Input) {
       // Pre-capture snapshot before the LLM stream starts. The AI SDK
@@ -113,6 +119,42 @@ const layer = Layer.effect(
         reasoningMap: {},
       }
       let aborted = false
+      let currentStreamInput: LLM.StreamInput | undefined
+      let failoverAttempted = false
+
+      const switchProvider = Effect.fnUntraced(function* (error: SessionRetry.Err) {
+        if (failoverAttempted) return false
+        if (ctx.currentText || Object.keys(ctx.reasoningMap).length > 0 || Object.keys(ctx.toolcalls).length > 0)
+          return false
+        if (!CredentialFailover.eligible(error)) return false
+        if (ctx.model.providerID !== "opencode" && ctx.model.providerID !== "opencode-go") return false
+        const destination = ctx.model.providerID === "opencode" ? "opencode-go" : "opencode"
+        const all = (yield* providers.list()) as Record<string, Provider.Info>
+        const destinationProvider = Object.values(all).find((item) => String(item.id) === destination)
+        if (!destinationProvider) return false
+        const destinationAuth = (yield* auth.all().pipe(Effect.orDie))[destination]
+        const environment = (destinationProvider as unknown as Record<string, unknown>).env
+        const hasEnvironmentKey =
+          Array.isArray(environment) &&
+          environment.some((name) => typeof name === "string" && globalThis.process?.env[name])
+        if (!destinationAuth && !hasEnvironmentKey) return false
+        const next =
+          Object.values(destinationProvider.models).find((item) => String(item.id) === String(ctx.model.id)) ??
+          Object.values(destinationProvider.models)[0]
+        if (!next) return false
+        ctx.model = next
+        ctx.assistantMessage.providerID = next.providerID
+        ctx.assistantMessage.modelID = next.id
+        currentStreamInput = { ...currentStreamInput!, model: next }
+        failoverAttempted = true
+        yield* events.publish(SessionEvent.ModelSwitched, {
+          sessionID: input.sessionID,
+          messageID: SessionMessage.ID.create(),
+          timestamp: yield* DateTime.now,
+          model: { id: next.id, providerID: next.providerID },
+        })
+        return true
+      })
 
       const parse = (e: unknown) =>
         MessageV2.fromError(e, {
@@ -631,13 +673,14 @@ const layer = Layer.effect(
         })
         ctx.needsCompaction = false
         ctx.shouldBreak = (yield* config.get()).experimental?.continue_loop_on_deny !== true
+        currentStreamInput = streamInput
 
         return yield* Effect.gen(function* () {
           yield* Effect.gen(function* () {
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            const stream = llm.stream(streamInput)
+            const stream = llm.stream(currentStreamInput!)
 
             yield* stream.pipe(
               Stream.tap((event) => handleEvent(event)),
@@ -670,6 +713,7 @@ const layer = Layer.effect(
                     next: info.next,
                   })
                 },
+                beforeRetry: switchProvider,
               }),
             ),
             Effect.catch(halt),
@@ -712,6 +756,8 @@ export const node = LayerNode.make({
     Image.node,
     EventV2Bridge.node,
     Database.node,
+    Provider.node,
+    Auth.node,
   ],
 })
 

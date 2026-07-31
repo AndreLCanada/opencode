@@ -34,7 +34,7 @@ export interface Interface {
   readonly list: (integrationID: Integration.ID) => Effect.Effect<Info[]>
   /** Returns one stored credential by ID. */
   readonly get: (id: ID) => Effect.Effect<Info | undefined>
-  /** Replaces any credential for an integration and returns the new record. */
+  /** Stores a credential and returns the new record. GO/Zen credentials append; other integrations replace. */
   readonly create: (input: {
     readonly integrationID: Integration.ID
     readonly value: Value
@@ -101,10 +101,12 @@ const layer = Layer.effect(
         yield* db
           .transaction((tx) =>
             Effect.gen(function* () {
-              yield* tx
-                .delete(CredentialTable)
-                .where(eq(CredentialTable.integration_id, credential.integrationID))
-                .run()
+              if (credential.integrationID !== "opencode" && credential.integrationID !== "opencode-go") {
+                yield* tx
+                  .delete(CredentialTable)
+                  .where(eq(CredentialTable.integration_id, credential.integrationID))
+                  .run()
+              }
               yield* tx
                 .insert(CredentialTable)
                 .values({

@@ -704,6 +704,9 @@ function ProviderConnection(props: {
   })
 
   async function complete() {
+    // Provider clients capture credentials at construction time. Dispose them before refreshing
+    // the catalog so a newly added key is visible without restarting the server.
+    await serverSDK().client.global.dispose().catch(() => undefined)
     await serverSync()
       .refreshProviders()
       .catch(() => undefined)
@@ -792,6 +795,7 @@ function ProviderConnection(props: {
 
   function ApiAuthView() {
     let apiKey: HTMLInputElement | undefined
+    let apiKeys: HTMLTextAreaElement | undefined
     const errorID = createUniqueId()
     const [formStore, setFormStore] = createStore({
       value: "",
@@ -800,7 +804,8 @@ function ProviderConnection(props: {
 
     onMount(() => {
       if (!newLayout()) return
-      apiKey?.focus({ preventScroll: true })
+      const focus = apiKey ?? apiKeys
+      focus?.focus({ preventScroll: true })
     })
 
     async function handleSubmit(e: SubmitEvent) {
@@ -809,18 +814,24 @@ function ProviderConnection(props: {
       const form = e.currentTarget as HTMLFormElement
       const formData = new FormData(form)
       const apiKey = formData.get("apiKey") as string
+      const keys = apiKey
+        .split(/\r?\n/)
+        .map((key) => key.trim())
+        .filter(Boolean)
 
-      if (!apiKey?.trim()) {
+      if (keys.length === 0) {
         setFormStore("error", language.t("provider.connect.apiKey.required"))
         return
       }
 
       setFormStore("error", undefined)
-      await serverSDK().api.integration.connect.key({
-        integrationID: props.provider,
-        location: location(),
-        key: apiKey,
-      })
+      for (const key of keys) {
+        await serverSDK().api.integration.connect.key({
+          integrationID: props.provider,
+          location: location(),
+          key,
+        })
+      }
       await complete()
     }
 
@@ -849,19 +860,37 @@ function ProviderConnection(props: {
           <form onSubmit={handleSubmit} class="flex flex-col items-start gap-5 self-stretch">
             <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
               {language.t("provider.connect.apiKey.label", { provider: provider().name })}
-              <TextInputV2
-                ref={apiKey}
-                class="!w-full"
-                name="apiKey"
-                data-input="provider-api-key"
-                placeholder={language.t("provider.connect.apiKey.placeholder")}
-                value={formStore.value}
-                invalid={formStore.error !== undefined}
-                aria-describedby={formStore.error ? errorID : undefined}
-                autocomplete="off"
-                spellcheck={false}
-                onInput={(event) => setFormStore("value", event.currentTarget.value)}
-              />
+              <Show
+                when={provider().id === "opencode" || provider().id === "opencode-go"}
+                fallback={
+                  <TextInputV2
+                    ref={apiKey}
+                    class="!w-full"
+                    name="apiKey"
+                    data-input="provider-api-key"
+                    placeholder={language.t("provider.connect.apiKey.placeholder")}
+                    value={formStore.value}
+                    invalid={formStore.error !== undefined}
+                    aria-describedby={formStore.error ? errorID : undefined}
+                    autocomplete="off"
+                    spellcheck={false}
+                    onInput={(event) => setFormStore("value", event.currentTarget.value)}
+                  />
+                }
+              >
+                <textarea
+                  ref={apiKeys}
+                  class="w-full min-h-24 rounded border border-v2-border-border-base bg-v2-surface-surface-raised px-3 py-2 outline-none focus:border-v2-border-border-focus"
+                  name="apiKey"
+                  data-input="provider-api-key"
+                  placeholder="Paste one API key per line"
+                  value={formStore.value}
+                  aria-describedby={formStore.error ? errorID : undefined}
+                  autocomplete="off"
+                  spellcheck={false}
+                  onInput={(event) => setFormStore("value", event.currentTarget.value)}
+                />
+              </Show>
             </label>
             <Show when={formStore.error}>
               {(error) => (

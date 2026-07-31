@@ -6,10 +6,15 @@ import {
   Message,
   SystemPart,
   isContextOverflowFailure,
+  type Model,
   type ProviderErrorEvent,
 } from "@opencode-ai/llm"
 import { Cause, DateTime, Effect, FiberSet, Layer, Option, Semaphore, Stream } from "effect"
 import { AgentV2 } from "../../agent"
+import { CredentialFailover } from "../../credential/failover"
+import { Catalog } from "../../catalog"
+import { Integration } from "../../integration"
+import { SessionStatusEvent } from "@opencode-ai/schema/session-status-event"
 import { Config } from "../../config"
 import { Database } from "../../database/database"
 import { EventV2 } from "../../event"
@@ -27,6 +32,7 @@ import { ToolOutputStore } from "../../tool-output-store"
 import { SessionContextEpoch } from "../context-epoch"
 import { SessionCompaction } from "../compaction"
 import { SessionEvent } from "../event"
+import { SessionMessage } from "../message"
 import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
 import { SessionSchema } from "../schema"
@@ -98,6 +104,8 @@ const layer = Layer.effect(
     const agents = yield* AgentV2.Service
     const tools = yield* ToolRegistry.Service
     const models = yield* SessionRunnerModel.Service
+    const integrations = yield* Integration.Service
+    const catalog = yield* Catalog.Service
     const store = yield* SessionStore.Service
     const location = yield* Location.Service
     const systemContext = yield* SystemContextRegistry.Service
@@ -111,6 +119,59 @@ const layer = Layer.effect(
       const session = yield* store.get(sessionID)
       if (!session) return yield* Effect.die(`Session not found: ${sessionID}`)
       return session
+    })
+    const failoverModels = new Map<SessionSchema.ID, SessionSchema.Info["model"]>()
+    const failoverRoutes = new Map<SessionSchema.ID, Set<string>>()
+
+    class FailoverTransitionError extends Error {
+      constructor(readonly sessionID: SessionSchema.ID) {
+        super("Provider failover")
+      }
+    }
+
+    const switchProvider = Effect.fnUntraced(function* (session: SessionSchema.Info, model: Model, error: LLMError) {
+      if (!CredentialFailover.eligible(error) || (model.provider !== "opencode" && model.provider !== "opencode-go"))
+        return false
+      const destination = model.provider === "opencode" ? "opencode-go" : "opencode"
+      const attempted = failoverRoutes.get(session.id) ?? new Set<string>([model.provider])
+      if (attempted.has(destination)) return false
+      attempted.add(destination)
+      failoverRoutes.set(session.id, attempted)
+      const available = yield* catalog.model.available()
+      const selected =
+        available.find(
+          (candidate) => candidate.providerID === destination && String(candidate.id) === String(model.id),
+        ) ?? available.find((candidate) => candidate.providerID === destination)
+      if (!selected) return false
+      const destinationProvider = yield* catalog.provider.get(selected.providerID)
+      const destinationIntegrationID = destinationProvider?.integrationID ?? Integration.ID.make(selected.providerID)
+      if (!(yield* integrations.connection.active(destinationIntegrationID, session.id))) return false
+      const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
+      const integrationID = provider?.integrationID ?? Integration.ID.make(model.provider)
+      yield* integrations.connection.cooldown(integrationID, session.id, error.retryAfterMs)
+      const next = {
+        id: ModelV2.ID.make(selected.id),
+        providerID: ProviderV2.ID.make(selected.providerID),
+        ...(session.model?.variant === undefined ? {} : { variant: session.model.variant }),
+      }
+      failoverModels.set(session.id, next)
+      const now = yield* DateTime.now
+      yield* events.publish(SessionStatusEvent.Status, {
+        sessionID: session.id,
+        status: {
+          type: "retry",
+          attempt: 1,
+          message: `Switching provider to ${destination}`,
+          next: DateTime.toEpochMillis(now),
+        },
+      })
+      yield* events.publish(SessionEvent.ModelSwitched, {
+        sessionID: session.id,
+        messageID: SessionMessage.ID.create(),
+        timestamp: now,
+        model: next,
+      })
+      return true
     })
 
     const getContext = Effect.fn("SessionRunner.getContext")(function* (sessionID: SessionSchema.ID) {
@@ -176,9 +237,13 @@ const layer = Layer.effect(
       step: number,
       recoverOverflow?: typeof compaction.compactAfterOverflow,
     ) {
-      const session = yield* getSession(sessionID)
+      const storedSession = yield* getSession(sessionID)
+      const session = failoverModels.has(sessionID)
+        ? { ...storedSession, model: failoverModels.get(sessionID) }
+        : storedSession
       if (session.location.directory !== location.directory || session.location.workspaceID !== location.workspaceID)
         return yield* Effect.interrupt
+      yield* events.publish(SessionStatusEvent.Status, { sessionID, status: { type: "busy" } })
       const agent = yield* agents.select(session.agent)
       const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent), session.id)
       const toolFibers = yield* FiberSet.make<void, ToolOutputStore.Error>()
@@ -212,8 +277,14 @@ const layer = Layer.effect(
         tools: toolMaterialization?.definitions ?? [],
         toolChoice: isLastStep ? "none" : undefined,
       })
-      if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request }))
+      if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request })) {
+        const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
+        yield* integrations.connection.release(
+          provider?.integrationID ?? Integration.ID.make(model.provider),
+          session.id,
+        )
         return yield* Effect.die(continueAfterCompaction(currentStep))
+      }
       const startSnapshot = yield* snapshots.capture()
       const publisher = createLLMEventPublisher(events, {
         sessionID: session.id,
@@ -228,6 +299,13 @@ const layer = Layer.effect(
       const withPublication = Semaphore.makeUnsafe(1).withPermit
       const publish = (event: LLMEvent, outputPaths: ReadonlyArray<string> = []) =>
         withPublication(publisher.publish(event, outputPaths))
+      const releaseCredential = Effect.fnUntraced(function* () {
+        const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
+        yield* integrations.connection.release(
+          provider?.integrationID ?? Integration.ID.make(model.provider),
+          session.id,
+        )
+      })
       let overflowFailure: ProviderErrorEvent | undefined
       const providerStream = llm.stream(request).pipe(
         Stream.runForEach((event) =>
@@ -271,7 +349,7 @@ const layer = Layer.effect(
             ).pipe(FiberSet.run(toolFibers))
           }),
         ),
-        Effect.ensuring(withPublication(publisher.flush())),
+        Effect.ensuring(withPublication(publisher.flush()).pipe(Effect.ensuring(releaseCredential()))),
       )
 
       return yield* Effect.uninterruptibleMask((restore) =>
@@ -288,6 +366,14 @@ const layer = Layer.effect(
             return yield* Effect.die(continueAfterOverflowCompaction(currentStep))
           if (overflowFailure) yield* publish(overflowFailure)
           const llmFailure = failure instanceof LLMError ? failure : undefined
+          if (
+            llmFailure &&
+            !publisher.hasAssistantStarted() &&
+            !needsContinuation &&
+            (yield* switchProvider(session, model, llmFailure))
+          ) {
+            return yield* Effect.die(new FailoverTransitionError(session.id))
+          }
           if (llmFailure && !publisher.hasProviderError()) {
             yield* withPublication(publisher.failUnsettledTools("Provider did not return a tool result", true))
             yield* withPublication(publisher.failAssistant(llmFailure.reason.message))
@@ -356,6 +442,10 @@ const layer = Layer.effect(
       return yield* runTurnAttempt(sessionID, promotion, step).pipe(
         Effect.catchDefect(
           Effect.fnUntraced(function* (defect) {
+            if (defect instanceof FailoverTransitionError) {
+              yield* Effect.yieldNow
+              return yield* runTurn(sessionID, undefined, step)
+            }
             if (!(defect instanceof TurnTransitionError)) return yield* Effect.die(defect)
             if (defect.transition._tag === "ContinueAfterOverflowCompaction")
               return yield* Effect.die("Post-compaction provider attempt cannot recover another overflow")
@@ -387,22 +477,32 @@ const layer = Layer.effect(
       const hasSteer = yield* SessionInput.hasPending(db, input.sessionID, "steer")
       const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
       if (!input.force && !hasSteer && !hasQueue) return
-      yield* failInterruptedTools(input.sessionID)
-      let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
-      let shouldRun = input.force || hasSteer || hasQueue
-      while (shouldRun) {
-        let needsContinuation = true
-        let step = 1
-        while (needsContinuation) {
-          const result = yield* runTurn(input.sessionID, promotion, step)
-          needsContinuation = result.needsContinuation
-          step = result.step + 1
-          promotion = "steer"
-          if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+      failoverRoutes.delete(input.sessionID)
+      return yield* Effect.gen(function* () {
+        yield* failInterruptedTools(input.sessionID)
+        let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
+        let shouldRun = input.force || hasSteer || hasQueue
+        while (shouldRun) {
+          let needsContinuation = true
+          let step = 1
+          while (needsContinuation) {
+            const result = yield* runTurn(input.sessionID, promotion, step)
+            needsContinuation = result.needsContinuation
+            step = result.step + 1
+            promotion = "steer"
+            if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+          }
+          shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
+          promotion = shouldRun ? "queue" : undefined
         }
-        shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
-        promotion = shouldRun ? "queue" : undefined
-      }
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            failoverRoutes.delete(input.sessionID)
+            failoverModels.delete(input.sessionID)
+          }),
+        ),
+      )
     })
 
     return Service.of({
@@ -416,6 +516,8 @@ export const node = makeLocationNode({
   layer,
   deps: [
     EventV2.node,
+    Catalog.node,
+    Integration.node,
     llmClient,
     AgentV2.node,
     ToolRegistry.node,

@@ -84,6 +84,12 @@ const paid = (providers: Record<string, { models: Record<string, { cost: { input
 
 const languageBaseURL = (language: unknown) => (language as { config: { baseURL: string } }).config.baseURL
 
+test("GO and Zen language cache keys are credential-specific", () => {
+  const model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("model") } as Provider.Model
+  expect(Provider.languageCacheKey(model, "key-a")).not.toBe(Provider.languageCacheKey(model, "key-b"))
+  expect(Provider.languageCacheKey({ ...model, providerID: ProviderV2.ID.make("openai") })).toBe("openai/model")
+})
+
 const it = testEffect(LayerNode.compile(LayerNode.group([Provider.node, Env.node, Plugin.node])))
 const experimentalModels = testEffect(providerLayer({ enableExperimentalModels: true }))
 

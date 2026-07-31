@@ -115,6 +115,22 @@ describe("session.retry.delay", () => {
       })
     }),
   )
+
+  it.instance("allows a GO/Zen auth failover when generic retry is disabled", () =>
+    Effect.gen(function* () {
+      let message = ""
+      const step = yield* Schedule.toStepWithMetadata(
+        SessionRetry.policy({
+          provider: "opencode-go",
+          parse: () => wrap({ statusCode: 401, message: "Unauthorized" }),
+          beforeRetry: () => Effect.succeed(true),
+          set: (info) => Effect.sync(() => void (message = info.message)),
+        }),
+      )
+      yield* step({})
+      expect(message).toBe("Switching provider from opencode-go")
+    }),
+  )
 })
 
 describe("session.retry.retryable", () => {

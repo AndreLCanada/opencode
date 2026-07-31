@@ -1,4 +1,5 @@
 import type { NamedError } from "@opencode-ai/core/util/error"
+import { CredentialFailover } from "@opencode-ai/core/credential/failover"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { Cause, Clock, Duration, Effect, Schedule } from "effect"
 import { MessageV2 } from "./message-v2"
@@ -177,23 +178,40 @@ export function policy(opts: {
   provider: string
   parse: (error: unknown) => Err
   set: (input: { attempt: number; message: string; action?: Retryable["action"]; next: number }) => Effect.Effect<void>
+  beforeRetry?: (error: Err) => Effect.Effect<boolean>
 }) {
   return Schedule.fromStepWithMetadata(
     Effect.succeed((meta: Schedule.InputMetadata<unknown>) => {
       const error = opts.parse(meta.input)
       const retry = retryable(error, opts.provider)
-      if (!retry) return Cause.done(meta.attempt)
-      return Effect.gen(function* () {
-        const wait = delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
-        const now = yield* Clock.currentTimeMillis
-        yield* opts.set({
-          attempt: meta.attempt,
-          message: retry.message,
-          action: retry.action,
-          next: now + wait,
-        })
-        return [meta.attempt, Duration.millis(wait)] as [number, Duration.Duration]
-      })
+      const eligible =
+        (opts.provider === "opencode" || opts.provider === "opencode-go") && CredentialFailover.eligible(error)
+      if (!retry && !eligible) return Cause.done(meta.attempt)
+      const before = opts.beforeRetry ? opts.beforeRetry(error) : Effect.succeed(false)
+      return before.pipe(
+        Effect.flatMap((switched) => {
+          if (!retry && !switched) return Cause.done(meta.attempt)
+          return Effect.gen(function* () {
+            const wait = switched ? 0 : delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
+            const now = yield* Clock.currentTimeMillis
+            if (!retry) {
+              yield* opts.set({
+                attempt: meta.attempt,
+                message: `Switching provider from ${opts.provider}`,
+                next: now,
+              })
+              return [meta.attempt, Duration.millis(0)] as [number, Duration.Duration]
+            }
+            yield* opts.set({
+              attempt: meta.attempt,
+              message: switched ? `Switching provider from ${opts.provider}` : retry.message,
+              action: switched ? undefined : retry.action,
+              next: now + wait,
+            })
+            return [meta.attempt, Duration.millis(wait)] as [number, Duration.Duration]
+          })
+        }),
+      )
     }),
   )
 }

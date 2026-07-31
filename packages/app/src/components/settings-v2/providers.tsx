@@ -10,6 +10,7 @@ import { useServerProtocol, useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
 import { DialogConnectProvider, useProviderConnectController } from "../dialog-connect-provider"
 import { DialogCustomProvider } from "../dialog-custom-provider"
+import { CredentialRows } from "../settings-providers"
 import { SettingsListV2 } from "./parts/list"
 import "./settings-v2.css"
 
@@ -160,6 +161,7 @@ export const SettingsProvidersV2: Component<{
             >
               <For each={connected()}>
                 {(item) => (
+                  <>
                   <div class="settings-v2-provider-row group">
                     <div class="settings-v2-provider-lead">
                       <ProviderIcon
@@ -186,6 +188,10 @@ export const SettingsProvidersV2: Component<{
                       </ButtonV2>
                     </Show>
                   </div>
+                  <Show when={item.id === "opencode" || item.id === "opencode-go"}>
+                    <CredentialRows integrationID={item.id} />
+                  </Show>
+                  </>
                 )}
               </For>
             </Show>
