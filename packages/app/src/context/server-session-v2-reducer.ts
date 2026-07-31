@@ -61,6 +61,7 @@ export function createV2SessionReducer() {
           time: { created: event.created },
         })
       case "session.model.selected":
+      case "session.next.model.switched":
         return append({
           id: messageID(event.id),
           type: "model-switched",

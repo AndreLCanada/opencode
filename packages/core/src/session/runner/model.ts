@@ -202,9 +202,8 @@ export const locationLayer = Layer.effect(
           })
         if (!selected) return yield* new ModelNotSelectedError({ sessionID: session.id })
         const provider = yield* catalog.provider.get(selected.providerID)
-        const connection = yield* integrations.connection.active(
-          provider?.integrationID ?? Integration.ID.make(selected.providerID),
-        )
+        const integrationID = provider?.integrationID ?? Integration.ID.make(selected.providerID)
+        const connection = yield* integrations.connection.active(integrationID, session.id)
         return yield* resolve(
           session,
           selected,

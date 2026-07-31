@@ -397,10 +397,16 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
       connect: {
         ...input.current.integration.connect,
         key: async (value: Parameters<ServerApi["integration"]["connect"]["key"]>[0]) => {
-          await legacy(value.location).auth.set({
-            providerID: value.integrationID,
-            auth: { type: "api", key: value.key },
-          })
+          const keys = value.key
+            .split(/\r?\n/)
+            .map((key) => key.trim())
+            .filter(Boolean)
+          for (const key of keys) {
+            await legacy(value.location).auth.set({
+              providerID: value.integrationID,
+              auth: { type: "api", key },
+            })
+          }
           await legacy(value.location).instance.dispose()
           await input.legacy().instance.dispose()
         },

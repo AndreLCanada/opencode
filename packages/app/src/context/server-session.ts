@@ -957,6 +957,16 @@ export function createServerSession(
       })
     if (event.type === "session.usage.updated" && info)
       remember({ ...info, cost: event.data.cost, tokens: event.data.tokens })
+    if (event.type === "session.next.model.switched" && info)
+      remember({
+        ...info,
+        model: {
+          id: event.data.model.id,
+          providerID: event.data.model.providerID,
+          variant: event.data.model.variant,
+        },
+        time: { ...info.time, updated: event.created },
+      })
     // if (event.type === "session.archived") {
     //   if (info) remember({ ...info, time: { ...info.time, archived: event.created, updated: event.created } })
     //   evict([sessionID])

@@ -145,9 +145,13 @@ const layer = Layer.effect(
         available.find((candidate) => candidate.providerID === destination && candidate.id === model.id) ??
         available.find((candidate) => candidate.providerID === destination)
       if (!selected) return false
+      const destinationProvider = yield* catalog.provider.get(selected.providerID)
+      const destinationIntegrationID =
+        destinationProvider?.integrationID ?? Integration.ID.make(selected.providerID)
+      if (!(yield* integrations.connection.active(destinationIntegrationID, session.id))) return false
       const provider = yield* catalog.provider.get(model.provider)
       const integrationID = provider?.integrationID ?? Integration.ID.make(model.provider)
-      yield* integrations.connection.cooldown(integrationID, error.retryAfterMs)
+      yield* integrations.connection.cooldown(integrationID, session.id, error.retryAfterMs)
       const next = {
         id: ModelV2.ID.make(selected.id),
         providerID: ProviderV2.ID.make(selected.providerID),
@@ -276,8 +280,11 @@ const layer = Layer.effect(
         tools: toolMaterialization?.definitions ?? [],
         toolChoice: isLastStep ? "none" : undefined,
       })
-      if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request }))
+      if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request })) {
+        const provider = yield* catalog.provider.get(model.provider)
+        yield* integrations.connection.release(provider?.integrationID ?? Integration.ID.make(model.provider), session.id)
         return yield* Effect.die(continueAfterCompaction(currentStep))
+      }
       const startSnapshot = yield* snapshots.capture()
       const publisher = createLLMEventPublisher(events, {
         sessionID: session.id,
@@ -294,7 +301,7 @@ const layer = Layer.effect(
         withPublication(publisher.publish(event, outputPaths))
       const releaseCredential = Effect.fnUntraced(function* () {
         const provider = yield* catalog.provider.get(model.provider)
-        yield* integrations.connection.release(provider?.integrationID ?? Integration.ID.make(model.provider))
+        yield* integrations.connection.release(provider?.integrationID ?? Integration.ID.make(model.provider), session.id)
       })
       let overflowFailure: ProviderErrorEvent | undefined
       const providerStream = llm.stream(request).pipe(
@@ -468,22 +475,31 @@ const layer = Layer.effect(
       const hasQueue = hasSteer ? false : yield* SessionInput.hasPending(db, input.sessionID, "queue")
       if (!input.force && !hasSteer && !hasQueue) return
       failoverRoutes.delete(input.sessionID)
-      yield* failInterruptedTools(input.sessionID)
-      let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
-      let shouldRun = input.force || hasSteer || hasQueue
-      while (shouldRun) {
-        let needsContinuation = true
-        let step = 1
-        while (needsContinuation) {
-          const result = yield* runTurn(input.sessionID, promotion, step)
-          needsContinuation = result.needsContinuation
-          step = result.step + 1
-          promotion = "steer"
-          if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+      return yield* Effect.gen(function* () {
+        yield* failInterruptedTools(input.sessionID)
+        let promotion: SessionInput.Delivery | undefined = hasSteer ? "steer" : hasQueue ? "queue" : undefined
+        let shouldRun = input.force || hasSteer || hasQueue
+        while (shouldRun) {
+          let needsContinuation = true
+          let step = 1
+          while (needsContinuation) {
+            const result = yield* runTurn(input.sessionID, promotion, step)
+            needsContinuation = result.needsContinuation
+            step = result.step + 1
+            promotion = "steer"
+            if (!needsContinuation) needsContinuation = yield* SessionInput.hasPending(db, input.sessionID, "steer")
+          }
+          shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
+          promotion = shouldRun ? "queue" : undefined
         }
-        shouldRun = yield* SessionInput.hasPending(db, input.sessionID, "queue")
-        promotion = shouldRun ? "queue" : undefined
-      }
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            failoverRoutes.delete(input.sessionID)
+            failoverModels.delete(input.sessionID)
+          }),
+        ),
+      )
     })
 
     return Service.of({

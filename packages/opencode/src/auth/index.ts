@@ -8,6 +8,8 @@ import { FSUtil } from "@opencode-ai/core/fs-util"
 export const OAUTH_DUMMY_KEY = "opencode-oauth-dummy-key"
 
 const file = path.join(Global.Path.data, "auth.json")
+const multiKeyProviders = new Set(["opencode", "opencode-go"])
+const rotations = new Map<string, number>()
 
 const fail = (message: string) => (cause: unknown) => new AuthError({ message, cause })
 
@@ -67,7 +69,13 @@ const layer = Layer.effect(
     })
 
     const get = Effect.fn("Auth.get")(function* (providerID: string) {
-      return (yield* all())[providerID]
+      const info = (yield* all())[providerID]
+      if (!info || info.type !== "api" || !multiKeyProviders.has(providerID)) return info
+      const keys = parseKeys(info)
+      if (keys.length === 0) return info
+      const index = rotations.get(providerID) ?? 0
+      rotations.set(providerID, (index + 1) % keys.length)
+      return new Api({ ...info, key: keys[index % keys.length] })
     })
 
     const set = Effect.fn("Auth.set")(function* (key: string, info: Info) {
@@ -75,8 +83,15 @@ const layer = Layer.effect(
       const data = yield* all()
       if (norm !== key) delete data[key]
       delete data[norm + "/"]
+      const stored =
+        info.type === "api" && multiKeyProviders.has(norm)
+          ? new Api({
+              ...info,
+              metadata: { ...info.metadata, keys: JSON.stringify(uniqueKeys(parseKeys(data[norm]), info.key)) },
+            })
+          : info
       yield* fsys
-        .writeJson(file, { ...data, [norm]: info }, 0o600)
+        .writeJson(file, { ...data, [norm]: stored }, 0o600)
         .pipe(Effect.mapError(fail("Failed to write auth data")))
     })
 
@@ -93,5 +108,24 @@ const layer = Layer.effect(
 )
 
 export const node = LayerNode.make({ service: Service, layer: layer, deps: [FSUtil.node] })
+
+function parseKeys(value: unknown) {
+  if (!value || typeof value !== "object") return []
+  if ("metadata" in value && value.metadata && typeof value.metadata === "object" && "keys" in value.metadata) {
+    const raw = value.metadata.keys
+    if (typeof raw === "string") {
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (Array.isArray(parsed)) return parsed.filter((key): key is string => typeof key === "string")
+      } catch {}
+    }
+  }
+  if ("key" in value && typeof value.key === "string") return [value.key]
+  return []
+}
+
+function uniqueKeys(existing: readonly string[], next: string) {
+  return existing.includes(next) ? [...existing] : [...existing, next]
+}
 
 export * as Auth from "."

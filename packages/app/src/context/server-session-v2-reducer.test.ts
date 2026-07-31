@@ -6,6 +6,23 @@ const event = (input: object) => input as OpenCodeEvent
 const base = { created: 1, location: { directory: "/repo" }, durable: { aggregateID: "ses_1", seq: 1, version: 1 } }
 
 describe("v2 session reducer", () => {
+  test("projects native model switches", () => {
+    const result = createV2SessionReducer().reduce(
+      [],
+      event({
+        ...base,
+        id: "evt_model",
+        type: "session.next.model.switched",
+        data: { sessionID: "ses_1", model: { id: "zen-model", providerID: "opencode" } },
+      }),
+    )
+
+    expect(result?.messages[0]).toMatchObject({
+      type: "model-switched",
+      model: { id: "zen-model", providerID: "opencode" },
+    })
+  })
+
   test("projects promoted input and streaming assistant content", () => {
     const reducer = createV2SessionReducer()
     let messages: SessionMessageInfo[] = []
