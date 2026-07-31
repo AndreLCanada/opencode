@@ -130,11 +130,11 @@ const layer = Layer.effect(
     }
 
     const switchProvider = Effect.fnUntraced(function* (session: SessionSchema.Info, model: Model, error: LLMError) {
-      if (!CredentialFailover.eligible(error) || (model.provider !== "opencode" && model.provider !== "opencode-go"))
-        return false
-      const destination = model.provider === "opencode" ? "opencode-go" : "opencode"
+      const destinations = CredentialFailover.fallbackRoutes(model.provider)
+      if (!CredentialFailover.eligible(error) || destinations.length === 0) return false
       const attempted = failoverRoutes.get(session.id) ?? new Set<string>([model.provider])
-      if (attempted.has(destination)) return false
+      const destination = destinations.find((candidate) => !attempted.has(candidate))
+      if (!destination) return false
       attempted.add(destination)
       failoverRoutes.set(session.id, attempted)
       const available = yield* catalog.model.available()

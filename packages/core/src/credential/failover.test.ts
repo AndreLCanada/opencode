@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { eligible, makePool, matchingModel, otherRoute, retryAfterMs } from "./failover"
+import { eligible, fallbackRoutes, makePool, matchingModel, otherRoute, retryAfterMs } from "./failover"
 
 describe("credential failover pool", () => {
   test("rotates without selecting a reserved key", () => {
@@ -21,9 +21,14 @@ describe("credential failover pool", () => {
   })
 
   test("maps only the GO and Zen routes", () => {
-    expect(otherRoute("opencode-go")).toBe("opencode")
+    expect(otherRoute("opencode-go")).toBe("zen")
+    expect(otherRoute("zen")).toBe("opencode-go")
     expect(otherRoute("opencode")).toBe("opencode-go")
     expect(otherRoute("openai")).toBeUndefined()
+    expect(fallbackRoutes("opencode-go")).toEqual(["zen", "opencode"])
+    expect(fallbackRoutes("zen")).toEqual(["opencode-go", "opencode"])
+    expect(fallbackRoutes("opencode")).toEqual(["opencode-go", "zen"])
+    expect(fallbackRoutes("openai")).toEqual([])
   })
 
   test("recognizes quota and authentication failures", () => {

@@ -170,11 +170,13 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
             ...(result[providerID] ?? []),
             ...keys
               .filter((key): key is string => typeof key === "string")
-              .map((_, index) => ({
-                type: "api" as const,
-                label: `Stored API key ${index + 1}`,
-                prompts: [],
-              })),
+              .map((_, index) =>
+                Schema.decodeUnknownSync(Method)({
+                  type: "api",
+                  label: `Stored API key ${index + 1}`,
+                  prompts: [],
+                }),
+              ),
           ]
         } catch {}
       }

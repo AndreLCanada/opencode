@@ -49,9 +49,20 @@ export function retryAfterMs(value: string | undefined, now = Date.now()) {
   return Number.isNaN(timestamp) ? undefined : Math.max(0, timestamp - now)
 }
 
+export function fallbackRoutes(providerID: string): readonly string[] {
+  switch (providerID) {
+    case "opencode-go":
+      return ["zen", "opencode"]
+    case "zen":
+      return ["opencode-go", "opencode"]
+    case "opencode":
+      return ["opencode-go", "zen"]
+  }
+  return []
+}
+
 export function otherRoute(providerID: string) {
-  if (providerID === "opencode-go") return "opencode"
-  if (providerID === "opencode") return "opencode-go"
+  return fallbackRoutes(providerID)[0]
 }
 
 export function eligible(error: unknown) {
