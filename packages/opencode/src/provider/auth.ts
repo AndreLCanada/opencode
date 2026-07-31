@@ -41,6 +41,7 @@ const Prompt = Schema.Union([TextPrompt, SelectPrompt])
 export class Method extends Schema.Class<Method>("ProviderAuthMethod")({
   type: Schema.Literals(["oauth", "api"]),
   label: Schema.String,
+  credentialID: Schema.optional(Schema.String),
   prompts: optional(Schema.Array(Prompt)),
 }) {}
 
@@ -130,34 +131,55 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
     const decode = Schema.decodeUnknownSync(Methods)
     const methods = Effect.fn("ProviderAuth.methods")(function* () {
       const hooks = (yield* InstanceState.get(state)).hooks
-      return decode(
-        Record.map(hooks, (item) =>
-          item.methods.map((method) => ({
-            type: method.type,
-            label: method.label,
-            ...(method.prompts && {
-              prompts: method.prompts.map((prompt) => {
-                if (prompt.type === "select") {
+      const result = {
+        ...decode(
+          Record.map(hooks, (item) =>
+            item.methods.map((method) => ({
+              type: method.type,
+              label: method.label,
+              ...(method.prompts && {
+                prompts: method.prompts.map((prompt) => {
+                  if (prompt.type === "select") {
+                    return {
+                      type: "select" as const,
+                      key: prompt.key,
+                      message: prompt.message,
+                      options: prompt.options,
+                      ...(prompt.when && { when: prompt.when }),
+                    }
+                  }
                   return {
-                    type: "select" as const,
+                    type: "text" as const,
                     key: prompt.key,
                     message: prompt.message,
-                    options: prompt.options,
+                    ...(prompt.placeholder && { placeholder: prompt.placeholder }),
                     ...(prompt.when && { when: prompt.when }),
                   }
-                }
-                return {
-                  type: "text" as const,
-                  key: prompt.key,
-                  message: prompt.message,
-                  ...(prompt.placeholder && { placeholder: prompt.placeholder }),
-                  ...(prompt.when && { when: prompt.when }),
-                }
+                }),
               }),
-            }),
-          })),
+            })),
+          ),
         ),
-      )
+      } as Record<string, Method[]>
+      const auths = yield* auth.all().pipe(Effect.orDie)
+      for (const [providerID, info] of Object.entries(auths)) {
+        if (info.type !== "api" || (providerID !== "opencode" && providerID !== "opencode-go")) continue
+        try {
+          const keys: unknown = info.metadata?.keys ? JSON.parse(info.metadata.keys) : [info.key]
+          if (!Array.isArray(keys)) continue
+          result[providerID] = [
+            ...(result[providerID] ?? []),
+            ...keys
+              .filter((key): key is string => typeof key === "string")
+              .map((_, index) => ({
+                type: "api" as const,
+                label: `Stored API key ${index + 1}`,
+                credentialID: `${providerID}:${index}`,
+              })),
+          ]
+        } catch {}
+      }
+      return result
     })
 
     const authorize = Effect.fn("ProviderAuth.authorize")(function* (

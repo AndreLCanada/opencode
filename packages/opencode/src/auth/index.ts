@@ -47,6 +47,7 @@ export interface Interface {
   readonly all: () => Effect.Effect<Record<string, Info>, AuthError>
   readonly set: (key: string, info: Info) => Effect.Effect<void, AuthError>
   readonly remove: (key: string) => Effect.Effect<void, AuthError>
+  readonly removeKey: (providerID: string, index: number) => Effect.Effect<void, AuthError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Auth") {}
@@ -103,7 +104,24 @@ const layer = Layer.effect(
       yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
     })
 
-    return Service.of({ get, all, set, remove })
+    const removeKey = Effect.fn("Auth.removeKey")(function* (providerID: string, index: number) {
+      const data = yield* all()
+      const info = data[providerID]
+      if (!info || info.type !== "api") return
+      const keys = parseKeys(info).filter((_, current) => current !== index)
+      if (keys.length === 0) {
+        delete data[providerID]
+      } else {
+        data[providerID] = new Api({
+          ...info,
+          key: keys[0],
+          metadata: { ...info.metadata, keys: JSON.stringify(keys) },
+        })
+      }
+      yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
+    })
+
+    return Service.of({ get, all, set, remove, removeKey })
   }),
 )
 

@@ -25,6 +25,26 @@ export function createV2SessionReducer() {
     const append = (message: SessionMessageInfo) =>
       result(source.some((item) => item.id === message.id) ? [...source] : [...source, message], [message.id])
 
+    if ((event.type as string) === "session.next.model.switched") {
+      const native = event as OpenCodeEvent & {
+        created?: number
+        properties?: { timestamp?: number; model: { id: string; providerID: string; variant?: string } }
+        data?: { model: { id: string; providerID: string; variant?: string } }
+      }
+      const payload = native.data ?? native.properties!
+      return append({
+        id: messageID(event.id),
+        type: "model-switched",
+        metadata: "metadata" in event ? event.metadata : undefined,
+        model: payload.model,
+        previous: source.findLast(
+          (item): item is Extract<SessionMessageInfo, { type: "model-switched" | "assistant" }> =>
+            item.type === "model-switched" || item.type === "assistant",
+        )?.model,
+        time: { created: native.created ?? native.properties?.timestamp ?? Date.now() },
+      })
+    }
+
     switch (event.type) {
       case "session.input.admitted":
         pending.set(key(sessionID, event.data.inputID), event.data.input)
@@ -61,7 +81,6 @@ export function createV2SessionReducer() {
           time: { created: event.created },
         })
       case "session.model.selected":
-      case "session.next.model.switched":
         return append({
           id: messageID(event.id),
           type: "model-switched",

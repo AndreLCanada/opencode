@@ -14,6 +14,7 @@ import type {
   SessionPromptOutput,
   SessionShellInput,
   SessionShellOutput,
+  IntegrationMethod,
 } from "@opencode-ai/client/promise"
 
 type LegacyClient = OpencodeClient
@@ -35,9 +36,15 @@ type CompatiblePermissionApi = Omit<ServerApi["permission"], "reply"> & {
     input: Parameters<ServerApi["permission"]["reply"]>[0] & { location?: { directory?: string } },
   ) => ReturnType<ServerApi["permission"]["reply"]>
 }
-export type CompatibleApi = Omit<ServerApi, "session" | "permission"> & {
+type CompatibleCredentialApi = Omit<ServerApi["credential"], "remove"> & {
+  remove: (
+    input: Parameters<ServerApi["credential"]["remove"]>[0] & LegacyLocation,
+  ) => ReturnType<ServerApi["credential"]["remove"]>
+}
+export type CompatibleApi = Omit<ServerApi, "session" | "permission" | "credential"> & {
   readonly session: CompatibleSessionApi
   readonly permission: CompatiblePermissionApi
+  readonly credential: CompatibleCredentialApi
 }
 type LegacyPrompt = {
   agent?: string
@@ -378,18 +385,27 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
     integration: {
       ...input.current.integration,
       async get(value: Parameters<ServerApi["integration"]["get"]>[0]) {
-        const methods = ((await legacy(value.location).provider.auth()).data?.[value.integrationID] ?? []).map(
-          (method, index) =>
-            method.type === "api"
-              ? { type: "key" as const, label: method.label }
-              : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },
+        const authMethods = ((await legacy(value.location).provider.auth()).data?.[value.integrationID] ??
+          []) as Array<{
+          type: "api" | "oauth"
+          label: string
+          prompts?: Extract<IntegrationMethod, { type: "oauth" }>["prompts"]
+          credentialID?: string
+        }>
+        const methods = authMethods.map((method, index) =>
+          method.type === "api"
+            ? { type: "key" as const, label: method.label }
+            : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },
+        )
+        const connections = authMethods.flatMap((method) =>
+          method.credentialID ? [{ type: "credential" as const, id: method.credentialID, label: method.label }] : [],
         )
         return located(
           {
             id: value.integrationID,
             name: value.integrationID,
             methods,
-            connections: [],
+            connections,
           },
           value.location,
         )
@@ -453,6 +469,14 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             value.location,
           )
         },
+      },
+    },
+    credential: {
+      ...input.current.credential,
+      remove: async (value: Parameters<ServerApi["credential"]["remove"]>[0] & LegacyLocation) => {
+        await legacy(value.location).auth.remove({ providerID: value.credentialID })
+        await legacy(value.location).instance.dispose()
+        await input.legacy().instance.dispose()
       },
     },
     pty: {

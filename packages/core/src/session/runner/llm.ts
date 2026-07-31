@@ -130,10 +130,7 @@ const layer = Layer.effect(
     }
 
     const switchProvider = Effect.fnUntraced(function* (session: SessionSchema.Info, model: Model, error: LLMError) {
-      if (
-        !CredentialFailover.eligible(error) ||
-        (model.provider !== "opencode" && model.provider !== "opencode-go")
-      )
+      if (!CredentialFailover.eligible(error) || (model.provider !== "opencode" && model.provider !== "opencode-go"))
         return false
       const destination = model.provider === "opencode" ? "opencode-go" : "opencode"
       const attempted = failoverRoutes.get(session.id) ?? new Set<string>([model.provider])
@@ -142,14 +139,14 @@ const layer = Layer.effect(
       failoverRoutes.set(session.id, attempted)
       const available = yield* catalog.model.available()
       const selected =
-        available.find((candidate) => candidate.providerID === destination && candidate.id === model.id) ??
-        available.find((candidate) => candidate.providerID === destination)
+        available.find(
+          (candidate) => candidate.providerID === destination && String(candidate.id) === String(model.id),
+        ) ?? available.find((candidate) => candidate.providerID === destination)
       if (!selected) return false
       const destinationProvider = yield* catalog.provider.get(selected.providerID)
-      const destinationIntegrationID =
-        destinationProvider?.integrationID ?? Integration.ID.make(selected.providerID)
+      const destinationIntegrationID = destinationProvider?.integrationID ?? Integration.ID.make(selected.providerID)
       if (!(yield* integrations.connection.active(destinationIntegrationID, session.id))) return false
-      const provider = yield* catalog.provider.get(model.provider)
+      const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
       const integrationID = provider?.integrationID ?? Integration.ID.make(model.provider)
       yield* integrations.connection.cooldown(integrationID, session.id, error.retryAfterMs)
       const next = {
@@ -281,8 +278,11 @@ const layer = Layer.effect(
         toolChoice: isLastStep ? "none" : undefined,
       })
       if (yield* compaction.compactIfNeeded({ sessionID: session.id, entries, model, request })) {
-        const provider = yield* catalog.provider.get(model.provider)
-        yield* integrations.connection.release(provider?.integrationID ?? Integration.ID.make(model.provider), session.id)
+        const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
+        yield* integrations.connection.release(
+          provider?.integrationID ?? Integration.ID.make(model.provider),
+          session.id,
+        )
         return yield* Effect.die(continueAfterCompaction(currentStep))
       }
       const startSnapshot = yield* snapshots.capture()
@@ -300,8 +300,11 @@ const layer = Layer.effect(
       const publish = (event: LLMEvent, outputPaths: ReadonlyArray<string> = []) =>
         withPublication(publisher.publish(event, outputPaths))
       const releaseCredential = Effect.fnUntraced(function* () {
-        const provider = yield* catalog.provider.get(model.provider)
-        yield* integrations.connection.release(provider?.integrationID ?? Integration.ID.make(model.provider), session.id)
+        const provider = yield* catalog.provider.get(ProviderV2.ID.make(model.provider))
+        yield* integrations.connection.release(
+          provider?.integrationID ?? Integration.ID.make(model.provider),
+          session.id,
+        )
       })
       let overflowFailure: ProviderErrorEvent | undefined
       const providerStream = llm.stream(request).pipe(
