@@ -339,12 +339,7 @@ const layer = Layer.effect(
             ).pipe(FiberSet.run(toolFibers))
           }),
         ),
-        Effect.ensuring(
-          Effect.gen(function* () {
-            yield* withPublication(publisher.flush())
-            yield* releaseCredential()
-          }),
-        ),
+        Effect.ensuring(withPublication(publisher.flush()).pipe(Effect.ensuring(releaseCredential()))),
       )
 
       return yield* Effect.uninterruptibleMask((restore) =>
