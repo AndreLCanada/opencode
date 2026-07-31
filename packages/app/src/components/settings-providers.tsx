@@ -4,7 +4,7 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tag } from "@opencode-ai/ui/tag"
 import { showToast } from "@/utils/toast"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
-import { createMemo, type Component, For, Show } from "solid-js"
+import { createMemo, createResource, type Component, For, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServerProtocol, useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
@@ -168,6 +168,7 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
             >
               <For each={connected()}>
                 {(item) => (
+                  <>
                   <div class="group flex flex-wrap items-center justify-between gap-4 min-h-16 py-3 border-b border-border-weak-base last:border-none">
                     <div class="flex items-center gap-3 min-w-0">
                       <ProviderIcon id={item.id} class="size-5 shrink-0 icon-strong-base" />
@@ -187,6 +188,10 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
                       </Button>
                     </Show>
                   </div>
+                  <Show when={item.id === "opencode" || item.id === "opencode-go"}>
+                    <CredentialRows integrationID={item.id} />
+                  </Show>
+                  </>
                 )}
               </For>
             </Show>
@@ -260,5 +265,37 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
         </div>
       </div>
     </div>
+  )
+}
+
+export const CredentialRows: Component<{ integrationID: string }> = (props) => {
+  const serverSDK = useServerSDK()
+  const [integration, { refetch }] = createResource(
+    () => props.integrationID,
+    (integrationID) => serverSDK().api.integration.get({ integrationID }).then((result) => result.data),
+  )
+
+  const remove = async (credentialID: string) => {
+    await serverSDK().api.credential.remove({ credentialID })
+    await refetch()
+  }
+
+  return (
+    <Show when={integration()?.connections.filter((connection) => connection.type === "credential")}>
+      {(connections) => (
+        <div class="flex flex-col gap-1 pl-8 pb-3">
+          <For each={connections()}>
+            {(connection) => (
+              <div class="flex items-center justify-between gap-3 text-12-regular text-text-weak">
+                <span>{connection.label || "API key"}: ********</span>
+                <Button size="small" variant="ghost" onClick={() => void remove(connection.id)}>
+                  Remove
+                </Button>
+              </div>
+            )}
+          </For>
+        </div>
+      )}
+    </Show>
   )
 }
