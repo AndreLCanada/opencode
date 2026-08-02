@@ -716,7 +716,7 @@ function ProviderConnection(props: {
   createEffect(() => {
     if (auto) return
     if (loading()) return
-    if (methods().length === 1) {
+    if (methods().length === 1 && storedKeys().length === 0) {
       auto = true
       void selectMethod(0)
     }
