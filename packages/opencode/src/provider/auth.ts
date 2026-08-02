@@ -42,6 +42,11 @@ export class Method extends Schema.Class<Method>("ProviderAuthMethod")({
   type: Schema.Literals(["oauth", "api"]),
   label: Schema.String,
   prompts: optional(Schema.Array(Prompt)),
+  credentialID: optional(Schema.String),
+  displayPrefix: optional(Schema.String),
+  displaySuffix: optional(Schema.String),
+  createdAt: optional(Schema.Number),
+  cooldownUntil: optional(Schema.Number),
 }) {}
 
 export const Methods = Schema.Record(Schema.String, Schema.Array(Method))
@@ -166,15 +171,22 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
         try {
           const keys: unknown = info.metadata?.keys ? JSON.parse(info.metadata.keys) : [info.key]
           if (!Array.isArray(keys)) continue
+          const createdAt: number[] = info.metadata?.keysCreatedAt
+            ? (JSON.parse(info.metadata.keysCreatedAt) as number[])
+            : []
           result[providerID] = [
             ...(result[providerID] ?? []),
             ...keys
               .filter((key): key is string => typeof key === "string")
-              .map((_, index) =>
+              .map((key, index) =>
                 Schema.decodeUnknownSync(Method)({
                   type: "api",
-                  label: `Stored API key ${index + 1}`,
+                  label: `API key ${index + 1}`,
                   prompts: [],
+                  credentialID: `${providerID}:${index}`,
+                  displayPrefix: key.slice(0, 4),
+                  displaySuffix: key.slice(-4),
+                  createdAt: createdAt[index] ?? undefined,
                 }),
               ),
           ]
