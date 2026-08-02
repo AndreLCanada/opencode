@@ -390,18 +390,32 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
           type: "api" | "oauth"
           label: string
           prompts?: Extract<IntegrationMethod, { type: "oauth" }>["prompts"]
+          credentialID?: string
+          displayPrefix?: string
+          displaySuffix?: string
+          createdAt?: number
+          cooldownUntil?: number
         }>
         const methods = authMethods.map((method, index) =>
           method.type === "api"
             ? { type: "key" as const, label: method.label }
             : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },
         )
-        let apiIndex = 0
-        const connections = authMethods.flatMap((method) => {
-          if (method.type !== "api") return []
-          const credentialID = `${value.integrationID}:${apiIndex++}`
-          return [{ type: "credential" as const, id: credentialID, label: method.label }]
-        })
+        const connections = authMethods.flatMap((method) =>
+          method.type === "api" && method.credentialID
+            ? [
+                {
+                  type: "credential" as const,
+                  id: method.credentialID,
+                  label: method.label,
+                  displayPrefix: method.displayPrefix,
+                  displaySuffix: method.displaySuffix,
+                  createdAt: method.createdAt,
+                  cooldownUntil: method.cooldownUntil,
+                },
+              ]
+            : [],
+        )
         return located(
           {
             id: value.integrationID,

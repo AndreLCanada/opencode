@@ -287,7 +287,11 @@ export const CredentialRows: Component<{ integrationID: string }> = (props) => {
           <For each={connections()}>
             {(connection) => (
               <div class="flex items-center justify-between gap-3 text-12-regular text-text-weak">
-                <span>{connection.label || "API key"}: ********</span>
+                <span class="font-mono">
+                  {(connection as any).displayPrefix && (connection as any).displaySuffix
+                    ? `${(connection as any).displayPrefix}...${(connection as any).displaySuffix}`
+                    : `${connection.label || "API key"}: ********`}
+                </span>
                 <Button size="small" variant="ghost" onClick={() => void remove(connection.id)}>
                   Remove
                 </Button>

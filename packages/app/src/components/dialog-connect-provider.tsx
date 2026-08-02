@@ -414,7 +414,7 @@ function ProviderConnection(props: {
       label: language.t("provider.connect.method.apiKey"),
     },
   ])
-  const [integration] = createResource(
+  const [integration, { refetch }] = createResource(
     () => ({ provider: props.provider, directory: directory() }),
     (input) =>
       serverSDK()
@@ -431,6 +431,17 @@ function ProviderConnection(props: {
     )
     return values?.length ? values : fallback()
   })
+  const storedKeys = createMemo(() =>
+    (integration.latest?.connections?.filter((c) => c.type === "credential") ?? []) as Array<{
+      type: "credential"
+      id: string
+      label: string
+      displayPrefix?: string
+      displaySuffix?: string
+      createdAt?: number
+      cooldownUntil?: number
+    }>,
+  )
   const [store, setStore] = createStore({
     methodIndex: undefined as undefined | number,
     authorization: undefined as undefined | IntegrationOauthConnectOutput["data"],
@@ -1167,6 +1178,85 @@ function ProviderConnection(props: {
             </Match>
             <Match when={store.methodIndex === undefined}>
               <MethodSelection />
+              <Show when={storedKeys().length > 0}>
+                <div class={newLayout() ? "mt-3 px-3" : "mt-3"}>
+                  <div
+                    class={
+                      "mb-2 text-[13px] font-[440] leading-5 tracking-[-0.04px] " +
+                      (newLayout() ? "text-v2-text-text-muted" : "text-text-weak")
+                    }
+                  >
+                    Stored Keys
+                  </div>
+                  <For each={storedKeys()}>
+                    {(key) => {
+                      const prefix = () => key.displayPrefix ?? ""
+                      const suffix = () => key.displaySuffix ?? ""
+                      const createdAt = () =>
+                        key.createdAt
+                          ? new Date(key.createdAt).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : undefined
+                      const onCooldown = () =>
+                        key.cooldownUntil && key.cooldownUntil > Date.now()
+                      const cooldownRemaining = () => {
+                        if (!key.cooldownUntil) return undefined
+                        const ms = key.cooldownUntil - Date.now()
+                        if (ms <= 0) return undefined
+                        const h = Math.floor(ms / 3_600_000)
+                        const m = Math.floor((ms % 3_600_000) / 60_000)
+                        return h > 0 ? `${h}h ${m}m` : `${m}m`
+                      }
+                      return (
+                        <div
+                          class={
+                            "flex items-center justify-between gap-2 rounded-md py-1.5 text-[13px] leading-5 tracking-[-0.04px] " +
+                            (newLayout()
+                              ? "px-2 text-v2-text-text-muted"
+                              : "px-2 text-text-weak")
+                          }
+                        >
+                          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div class="flex items-center gap-2">
+                              <span class="font-mono font-[440] text-v2-text-text-base">
+                                {prefix() && suffix()
+                                  ? `${prefix()}...${suffix()}`
+                                  : key.label}
+                              </span>
+                              <Show when={onCooldown()}>
+                                <span class="rounded-sm bg-v2-overlay-warning-bg px-1.5 py-0.5 text-[11px] font-[530] leading-4 text-v2-text-warning-fg">
+                                  Rate-limited{cooldownRemaining() ? ` · ${cooldownRemaining()}` : ""}
+                                </span>
+                              </Show>
+                            </div>
+                            <div class="flex items-center gap-2">
+                              <span>{key.label}</span>
+                              <Show when={createdAt()}>
+                                <span aria-hidden="true">·</span>
+                                <span>{createdAt()}</span>
+                              </Show>
+                            </div>
+                          </div>
+                          <Button
+                            size="small"
+                            variant="ghost"
+                            class="shrink-0"
+                            onClick={async () => {
+                              await serverSDK().api.credential.remove({ credentialID: key.id })
+                              refetch()
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      )
+                    }}
+                  </For>
+                </div>
+              </Show>
             </Match>
             <Match when={store.state === "pending"}>
               <div class="text-14-regular text-text-base">

@@ -84,11 +84,21 @@ const layer = Layer.effect(
       const data = yield* all()
       if (norm !== key) delete data[key]
       delete data[norm + "/"]
+      const existing = data[norm]
       const stored =
         info.type === "api" && multiKeyProviders.has(norm)
           ? new Api({
               ...info,
-              metadata: { ...info.metadata, keys: JSON.stringify(uniqueKeys(parseKeys(data[norm]), info.key)) },
+              metadata: {
+                ...info.metadata,
+                keys: JSON.stringify(uniqueKeys(parseKeys(existing), info.key)),
+                keysCreatedAt: JSON.stringify([
+                  ...(existing?.metadata?.keysCreatedAt
+                    ? (JSON.parse(existing.metadata.keysCreatedAt) as number[])
+                    : parseKeys(existing).map(() => 0)),
+                  ...(parseKeys(existing).includes(info.key) ? [] : [Date.now()]),
+                ]),
+              },
             })
           : info
       yield* fsys
