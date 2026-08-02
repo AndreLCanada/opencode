@@ -181,7 +181,7 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
               .map((key, index) =>
                 Schema.decodeUnknownSync(Method)({
                   type: "api",
-                  label: `API key ${index + 1}`,
+                  label: `Stored API key ${index + 1} (${key.slice(0, 4)}...${key.slice(-4)})`,
                   prompts: [],
                   credentialID: `${providerID}:${index}`,
                   displayPrefix: key.slice(0, 4),
