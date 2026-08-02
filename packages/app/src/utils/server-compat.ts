@@ -396,7 +396,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
           createdAt?: number
           cooldownUntil?: number
         }>
-        const methods = authMethods.map((method, index) =>
+        const methods = authMethods.filter((method) => !method.credentialID).map((method, index) =>
           method.type === "api"
             ? { type: "key" as const, label: method.label }
             : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },

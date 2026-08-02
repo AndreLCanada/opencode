@@ -1179,82 +1179,63 @@ function ProviderConnection(props: {
             <Match when={store.methodIndex === undefined}>
               <MethodSelection />
               <Show when={storedKeys().length > 0}>
-                <div class={newLayout() ? "mt-3 px-3" : "mt-3"}>
-                  <div
-                    class={
-                      "mb-2 text-[13px] font-[440] leading-5 tracking-[-0.04px] " +
-                      (newLayout() ? "text-v2-text-text-muted" : "text-text-weak")
-                    }
-                  >
-                    Stored Keys
+                <div class={newLayout() ? "mx-3 mt-4 overflow-hidden rounded-lg border border-v2-border-border-muted bg-v2-background-bg-layer-02" : "mt-4 overflow-hidden rounded-lg border border-border-weak-base bg-surface-inset-base"}>
+                  <div class="flex items-start justify-between gap-3 px-3 py-3">
+                    <div class="min-w-0">
+                      <div class={newLayout() ? "text-[13px] font-[530] leading-5 text-v2-text-text-base" : "text-13-medium text-text-strong"}>
+                        Stored keys
+                      </div>
+                      <div class={newLayout() ? "mt-0.5 text-[12px] leading-4 text-v2-text-text-muted" : "mt-0.5 text-12-regular text-text-weak"}>
+                        {storedKeys().length} {storedKeys().length === 1 ? "workspace" : "workspaces"} connected
+                      </div>
+                    </div>
+                    <span class={newLayout() ? "rounded-full bg-v2-background-bg-base px-2 py-0.5 text-[11px] font-[530] leading-4 text-v2-text-text-muted" : "rounded-full bg-background-base px-2 py-0.5 text-11-medium text-text-weak"}>
+                      {storedKeys().length}
+                    </span>
                   </div>
-                  <For each={storedKeys()}>
-                    {(key) => {
-                      const prefix = () => key.displayPrefix ?? ""
-                      const suffix = () => key.displaySuffix ?? ""
-                      const createdAt = () =>
-                        key.createdAt
-                          ? new Date(key.createdAt).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : undefined
-                      const onCooldown = () =>
-                        key.cooldownUntil && key.cooldownUntil > Date.now()
-                      const cooldownRemaining = () => {
-                        if (!key.cooldownUntil) return undefined
-                        const ms = key.cooldownUntil - Date.now()
-                        if (ms <= 0) return undefined
-                        const h = Math.floor(ms / 3_600_000)
-                        const m = Math.floor((ms % 3_600_000) / 60_000)
-                        return h > 0 ? `${h}h ${m}m` : `${m}m`
-                      }
-                      return (
-                        <div
-                          class={
-                            "flex items-center justify-between gap-2 rounded-md py-1.5 text-[13px] leading-5 tracking-[-0.04px] " +
-                            (newLayout()
-                              ? "px-2 text-v2-text-text-muted"
-                              : "px-2 text-text-weak")
-                          }
-                        >
-                          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <div class="flex items-center gap-2">
-                              <span class="font-mono font-[440] text-v2-text-text-base">
-                                {prefix() && suffix()
-                                  ? `${prefix()}...${suffix()}`
-                                  : key.label}
-                              </span>
-                              <Show when={onCooldown()}>
-                                <span class="rounded-sm bg-v2-overlay-warning-bg px-1.5 py-0.5 text-[11px] font-[530] leading-4 text-v2-text-warning-fg">
-                                  Rate-limited{cooldownRemaining() ? ` · ${cooldownRemaining()}` : ""}
+                  <div class={newLayout() ? "border-t border-v2-border-border-muted" : "border-t border-border-weak-base"}>
+                    <For each={storedKeys()}>
+                      {(key, index) => {
+                        const masked = () => key.displayPrefix && key.displaySuffix ? `${key.displayPrefix}...${key.displaySuffix}` : key.label
+                        const createdAt = () =>
+                          key.createdAt
+                            ? new Date(key.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                            : "Added previously"
+                        const onCooldown = () => key.cooldownUntil && key.cooldownUntil > Date.now()
+                        return (
+                          <div class={newLayout() ? "flex items-center gap-3 border-b border-v2-border-border-muted px-3 py-3 last:border-b-0" : "flex items-center gap-3 border-b border-border-weak-base px-3 py-3 last:border-b-0"}>
+                            <div class={newLayout() ? "flex size-7 shrink-0 items-center justify-center rounded-md bg-v2-background-bg-base text-[12px] font-[530] text-v2-text-text-muted" : "flex size-7 shrink-0 items-center justify-center rounded-md bg-background-base text-12-medium text-text-weak"}>
+                              {index() + 1}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                              <div class="flex min-w-0 items-center gap-2">
+                                <span class={newLayout() ? "truncate rounded bg-v2-background-bg-base px-1.5 py-0.5 font-mono text-[12px] text-v2-text-text-base" : "truncate rounded bg-background-base px-1.5 py-0.5 font-mono text-12-regular text-text-strong"}>
+                                  {masked()}
                                 </span>
-                              </Show>
+                                <Show when={onCooldown()}>
+                                  <span class="shrink-0 rounded-full bg-v2-overlay-warning-bg px-2 py-0.5 text-[11px] font-[530] leading-4 text-v2-text-warning-fg">
+                                    Rate-limited
+                                  </span>
+                                </Show>
+                              </div>
+                              <div class={newLayout() ? "mt-1 text-[11px] leading-4 text-v2-text-text-muted" : "mt-1 text-11-regular text-text-weak"}>
+                                {createdAt()}
+                              </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                              <span>{key.label}</span>
-                              <Show when={createdAt()}>
-                                <span aria-hidden="true">·</span>
-                                <span>{createdAt()}</span>
-                              </Show>
-                            </div>
+                            <IconButton
+                              icon="trash"
+                              variant="ghost"
+                              aria-label={`Remove key ${index() + 1}`}
+                              onClick={async () => {
+                                await serverSDK().api.credential.remove({ credentialID: key.id })
+                                refetch()
+                              }}
+                            />
                           </div>
-                          <Button
-                            size="small"
-                            variant="ghost"
-                            class="shrink-0"
-                            onClick={async () => {
-                              await serverSDK().api.credential.remove({ credentialID: key.id })
-                              refetch()
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      )
-                    }}
-                  </For>
+                        )
+                      }}
+                    </For>
+                  </div>
                 </div>
               </Show>
             </Match>
