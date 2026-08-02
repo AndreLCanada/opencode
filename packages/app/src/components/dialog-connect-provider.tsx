@@ -427,20 +427,28 @@ function ProviderConnection(props: {
   const loading = createMemo(() => integration.loading)
   const methods = createMemo<ConnectMethod[]>(() => {
     const values = integration.latest?.methods.filter(
-      (method): method is ConnectMethod => method.type === "key" || method.type === "oauth",
+      (method): method is ConnectMethod =>
+        (method.type === "key" || method.type === "oauth") && !(method.label ?? "").startsWith("Stored API key "),
     )
     return values?.length ? values : fallback()
   })
   const storedKeys = createMemo(() =>
-    (integration.latest?.connections?.filter((c) => c.type === "credential") ?? []) as Array<{
-      type: "credential"
-      id: string
-      label: string
-      displayPrefix?: string
-      displaySuffix?: string
-      createdAt?: number
-      cooldownUntil?: number
-    }>,
+    (integration.latest?.methods ?? []).flatMap((method) => {
+      if (method.type !== "key") return []
+      const match = (method.label ?? "").match(/^Stored API key (\d+) \(([^.]+)\.\.\.([^)]+)\)$/)
+      if (!match) return []
+      return [
+        {
+          type: "credential" as const,
+          id: `${props.provider}:${Number(match[1]) - 1}`,
+          label: `Workspace ${match[1]}`,
+          displayPrefix: match[2],
+          displaySuffix: match[3],
+          createdAt: undefined,
+          cooldownUntil: undefined,
+        },
+      ]
+    }),
   )
   const [store, setStore] = createStore({
     methodIndex: undefined as undefined | number,
