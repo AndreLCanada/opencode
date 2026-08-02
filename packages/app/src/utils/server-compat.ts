@@ -396,20 +396,30 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
           createdAt?: number
           cooldownUntil?: number
         }>
-        const methods = authMethods.filter((method) => !method.credentialID).map((method, index) =>
+        const stored = authMethods.map((method) => {
+          if (method.credentialID) return method.credentialID
+          const match = method.type === "api" ? method.label.match(/^Stored API key (\d+) \(([^.]+)\.\.\.([^)]+)\)$/) : undefined
+          if (!match) return undefined
+          return {
+            credentialID: `${value.integrationID}:${Number(match[1]) - 1}`,
+            displayPrefix: match[2],
+            displaySuffix: match[3],
+          }
+        })
+        const methods = authMethods.filter((_, index) => !stored[index]).map((method, index) =>
           method.type === "api"
             ? { type: "key" as const, label: method.label }
             : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },
         )
-        const connections = authMethods.flatMap((method) =>
-          method.type === "api" && method.credentialID
+        const connections = authMethods.flatMap((method, index) =>
+          method.type === "api" && stored[index]
             ? [
                 {
                   type: "credential" as const,
-                  id: method.credentialID,
+                  id: typeof stored[index] === "string" ? stored[index] : stored[index].credentialID,
                   label: method.label,
-                  displayPrefix: method.displayPrefix,
-                  displaySuffix: method.displaySuffix,
+                  displayPrefix: typeof stored[index] === "string" ? method.displayPrefix : stored[index].displayPrefix,
+                  displaySuffix: typeof stored[index] === "string" ? method.displaySuffix : stored[index].displaySuffix,
                   createdAt: method.createdAt,
                   cooldownUntil: method.cooldownUntil,
                 },
