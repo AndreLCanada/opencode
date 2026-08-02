@@ -406,7 +406,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             displaySuffix: match[3],
           }
         })
-        const methods = authMethods.filter((_, index) => !stored[index]).map((method, index) =>
+        const methods = authMethods.map((method, index) =>
           method.type === "api"
             ? { type: "key" as const, label: method.label }
             : { type: "oauth" as const, id: String(index), label: method.label, prompts: method.prompts },
