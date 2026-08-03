@@ -136,7 +136,8 @@ const layer = Layer.effect(
           const keys = currentAuth.metadata?.keys ? JSON.parse(currentAuth.metadata.keys) : [currentAuth.key]
           if (Array.isArray(keys) && retryKeyCount < keys.length - 1) {
             retryKeyCount++
-            console.log(`[failover-v1] ${ctx.model.providerID} key ${retryKeyCount}/${keys.length} failed, trying next key before switching provider`)
+            yield* auth.advanceKey(ctx.model.providerID).pipe(Effect.orDie)
+            console.log(`[failover-v1] ${ctx.model.providerID} key ${retryKeyCount}/${keys.length} failed, advancing to next key`)
             return false
           }
           console.log(`[failover-v1] ${ctx.model.providerID} all ${keys.length} keys exhausted, switching provider`)

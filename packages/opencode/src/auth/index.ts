@@ -48,6 +48,7 @@ export interface Interface {
   readonly set: (key: string, info: Info) => Effect.Effect<void, AuthError>
   readonly remove: (key: string) => Effect.Effect<void, AuthError>
   readonly removeKey: (providerID: string, index: number) => Effect.Effect<void, AuthError>
+  readonly advanceKey: (providerID: string) => Effect.Effect<void, AuthError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Auth") {}
@@ -75,10 +76,22 @@ const layer = Layer.effect(
       const keys = parseKeys(info)
       if (keys.length === 0) return info
       const index = rotations.get(providerID) ?? 0
-      rotations.set(providerID, (index + 1) % keys.length)
       const selectedKey = keys[index % keys.length]
       console.log(`[key-rotation] ${providerID} using key ${index % keys.length + 1}/${keys.length}: ${selectedKey.slice(0, 6)}...${selectedKey.slice(-4)}`)
       return new Api({ ...info, key: selectedKey })
+    })
+
+    const advanceKey = Effect.fn("Auth.advanceKey")(function* (providerID: string) {
+      if (!multiKeyProviders.has(providerID)) return
+      const info = (yield* all())[providerID]
+      if (!info || info.type !== "api") return
+      const keys = parseKeys(info)
+      if (keys.length === 0) return
+      const current = rotations.get(providerID) ?? 0
+      const next = (current + 1) % keys.length
+      rotations.set(providerID, next)
+      const selectedKey = keys[next]
+      console.log(`[key-rotation] ${providerID} advancing to key ${next + 1}/${keys.length}: ${selectedKey.slice(0, 6)}...${selectedKey.slice(-4)}`)
     })
 
     const set = Effect.fn("Auth.set")(function* (key: string, info: Info) {
@@ -133,7 +146,7 @@ const layer = Layer.effect(
       yield* fsys.writeJson(file, data, 0o600).pipe(Effect.mapError(fail("Failed to write auth data")))
     })
 
-    return Service.of({ get, all, set, remove, removeKey })
+    return Service.of({ get, all, set, remove, removeKey, advanceKey })
   }),
 )
 
