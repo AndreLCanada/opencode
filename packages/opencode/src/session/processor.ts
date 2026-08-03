@@ -121,6 +121,7 @@ const layer = Layer.effect(
       let aborted = false
       let currentStreamInput: LLM.StreamInput | undefined
       let failoverAttempted = false
+      let retryKeyCount = 0
 
       const switchProvider = Effect.fnUntraced(function* (error: SessionRetry.Err) {
         if (failoverAttempted) return false
@@ -128,6 +129,19 @@ const layer = Layer.effect(
           return false
         if (!CredentialFailover.eligible(error)) return false
         if (ctx.model.providerID !== "opencode" && ctx.model.providerID !== "opencode-go") return false
+
+        const allAuth = yield* auth.all().pipe(Effect.orDie)
+        const currentAuth = allAuth[ctx.model.providerID]
+        if (currentAuth && currentAuth.type === "api") {
+          const keys = currentAuth.metadata?.keys ? JSON.parse(currentAuth.metadata.keys) : [currentAuth.key]
+          if (Array.isArray(keys) && retryKeyCount < keys.length - 1) {
+            retryKeyCount++
+            console.log(`[failover-v1] ${ctx.model.providerID} key ${retryKeyCount}/${keys.length} failed, trying next key before switching provider`)
+            return false
+          }
+          console.log(`[failover-v1] ${ctx.model.providerID} all ${keys.length} keys exhausted, switching provider`)
+        }
+
         const destination = ctx.model.providerID === "opencode" ? "opencode-go" : "opencode"
         const all = (yield* providers.list()) as Record<string, Provider.Info>
         const destinationProvider = Object.values(all).find((item) => String(item.id) === destination)

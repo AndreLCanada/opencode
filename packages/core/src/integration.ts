@@ -420,10 +420,12 @@ export const locationLayer = Layer.effect(
           return connection
         }),
         cooldown: Effect.fn("Integration.connection.cooldown")(function* (id, owner, retryAfterMs = 0) {
-          const selected = selection.get(`${id}:${owner}`)
+          const ownerKey = `${id}:${owner}`
+          const selected = selection.get(ownerKey)
           if (!selected) return
           console.log(`[credential-pool] ${id} owner=${owner}: penalizing ${selected.slice(0, 12)}... retryAfterMs=${retryAfterMs}`)
           pools.get(id)?.pool.penalize(selected, retryAfterMs, yield* Clock.currentTimeMillis)
+          selection.delete(ownerKey)
         }),
         release: Effect.fn("Integration.connection.release")(function* (id, owner) {
           const key = `${id}:${owner}`
