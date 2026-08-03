@@ -131,10 +131,16 @@ const layer = Layer.effect(
 
     const switchProvider = Effect.fnUntraced(function* (session: SessionSchema.Info, model: Model, error: LLMError) {
       const destinations = CredentialFailover.fallbackRoutes(model.provider)
-      if (!CredentialFailover.eligible(error) || destinations.length === 0) return false
+      const isEligible = CredentialFailover.eligible(error)
+      console.log(`[failover] provider=${model.provider} eligible=${isEligible} destinations=[${destinations.join(",")}] error=${error.reason?.message?.slice(0, 100) ?? "unknown"}`)
+      if (!isEligible || destinations.length === 0) return false
       const attempted = failoverRoutes.get(session.id) ?? new Set<string>([model.provider])
       const destination = destinations.find((candidate) => !attempted.has(candidate))
-      if (!destination) return false
+      if (!destination) {
+        console.log(`[failover] no untried destination remaining (attempted: ${[...attempted].join(",")})`)
+        return false
+      }
+      console.log(`[failover] switching from ${model.provider} to ${destination}`)
       attempted.add(destination)
       failoverRoutes.set(session.id, attempted)
       const available = yield* catalog.model.available()

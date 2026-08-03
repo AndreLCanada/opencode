@@ -409,8 +409,12 @@ export const locationLayer = Layer.effect(
             pools.set(id, entryPool)
           }
           const selected = entryPool.pool.next(yield* Clock.currentTimeMillis)
-          if (!selected) return
+          if (!selected) {
+            console.log(`[credential-pool] ${id} owner=${owner}: no available credential (all on cooldown or reserved)`)
+            return
+          }
           const connection = connections.find((connection) => connection.type === "credential" && connection.id === selected.id)
+          console.log(`[credential-pool] ${id} owner=${owner}: selected ${selected.id.slice(0, 12)}...`)
           if (owner === "legacy") entryPool.pool.release(selected.id)
           else selection.set(ownerKey, Credential.ID.make(selected.id))
           return connection
@@ -418,6 +422,7 @@ export const locationLayer = Layer.effect(
         cooldown: Effect.fn("Integration.connection.cooldown")(function* (id, owner, retryAfterMs = 0) {
           const selected = selection.get(`${id}:${owner}`)
           if (!selected) return
+          console.log(`[credential-pool] ${id} owner=${owner}: penalizing ${selected.slice(0, 12)}... retryAfterMs=${retryAfterMs}`)
           pools.get(id)?.pool.penalize(selected, retryAfterMs, yield* Clock.currentTimeMillis)
         }),
         release: Effect.fn("Integration.connection.release")(function* (id, owner) {
