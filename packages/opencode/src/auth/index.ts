@@ -76,7 +76,9 @@ const layer = Layer.effect(
       if (keys.length === 0) return info
       const index = rotations.get(providerID) ?? 0
       rotations.set(providerID, (index + 1) % keys.length)
-      return new Api({ ...info, key: keys[index % keys.length] })
+      const selectedKey = keys[index % keys.length]
+      console.log(`[key-rotation] ${providerID} using key ${index % keys.length + 1}/${keys.length}: ${selectedKey.slice(0, 6)}...${selectedKey.slice(-4)}`)
+      return new Api({ ...info, key: selectedKey })
     })
 
     const set = Effect.fn("Auth.set")(function* (key: string, info: Info) {

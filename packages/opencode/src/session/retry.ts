@@ -186,6 +186,7 @@ export function policy(opts: {
       const retry = retryable(error, opts.provider)
       const eligible =
         (opts.provider === "opencode" || opts.provider === "opencode-go") && CredentialFailover.eligible(error)
+      console.log(`[retry] provider=${opts.provider} attempt=${meta.attempt} retry=${!!retry} eligible=${eligible} statusCode=${(error as any)?.data?.statusCode} message=${(error as any)?.data?.message?.slice(0, 120) ?? "none"}`)
       if (!retry && !eligible) return Cause.done(meta.attempt)
       const before = opts.beforeRetry ? opts.beforeRetry(error) : Effect.succeed(false)
       return before.pipe(
