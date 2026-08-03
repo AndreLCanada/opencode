@@ -20,21 +20,24 @@ describe("credential failover pool", () => {
     expect(retryAfterMs("Thu, 01 Jan 1970 00:00:01 GMT", 0)).toBe(1000)
   })
 
-  test("maps only the GO and Zen routes", () => {
-    expect(otherRoute("opencode-go")).toBe("zen")
-    expect(otherRoute("zen")).toBe("opencode-go")
+  test("maps only the GO routes", () => {
+    expect(otherRoute("opencode-go")).toBe("opencode")
     expect(otherRoute("opencode")).toBe("opencode-go")
+    expect(otherRoute("zen")).toBeUndefined()
     expect(otherRoute("openai")).toBeUndefined()
-    expect(fallbackRoutes("opencode-go")).toEqual(["zen", "opencode"])
-    expect(fallbackRoutes("zen")).toEqual(["opencode-go", "opencode"])
-    expect(fallbackRoutes("opencode")).toEqual(["opencode-go", "zen"])
+    expect(fallbackRoutes("opencode-go")).toEqual(["opencode"])
+    expect(fallbackRoutes("opencode")).toEqual(["opencode-go"])
+    expect(fallbackRoutes("zen")).toEqual([])
     expect(fallbackRoutes("openai")).toEqual([])
   })
 
   test("recognizes quota and authentication failures", () => {
     expect(eligible({ data: { statusCode: 429 } })).toBe(true)
-    expect(eligible({ data: { message: "balance exhausted" } })).toBe(true)
+    expect(eligible({ data: { message: "rate limit exceeded" } })).toBe(true)
     expect(eligible({ data: { message: "authentication failed" } })).toBe(true)
+    expect(eligible({ data: { message: "insufficient balance" } })).toBe(false)
+    expect(eligible({ data: { message: "balance exhausted" } })).toBe(false)
+    expect(eligible({ data: { statusCode: 402 } })).toBe(false)
     expect(eligible({ data: { statusCode: 500, message: "unrelated" } })).toBe(false)
   })
 

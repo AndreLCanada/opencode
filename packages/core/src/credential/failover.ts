@@ -52,11 +52,9 @@ export function retryAfterMs(value: string | undefined, now = Date.now()) {
 export function fallbackRoutes(providerID: string): readonly string[] {
   switch (providerID) {
     case "opencode-go":
-      return ["zen", "opencode"]
-    case "zen":
-      return ["opencode-go", "opencode"]
+      return ["opencode"]
     case "opencode":
-      return ["opencode-go", "zen"]
+      return ["opencode-go"]
   }
   return []
 }
@@ -69,13 +67,13 @@ export function eligible(error: unknown) {
   if (!error || typeof error !== "object") return false
   const data = "data" in error && error.data && typeof error.data === "object" ? error.data : error
   const status = "statusCode" in data && typeof data.statusCode === "number" ? data.statusCode : undefined
-  if (status === 401 || status === 402 || status === 403 || status === 429) return true
+  if (status === 401 || status === 403 || status === 429) return true
   const text = JSON.stringify(data).toLowerCase()
+  if (text.includes("balance") || text.includes("insufficient")) return false
   return [
     "rate limit",
     "rate_limit",
     "quota",
-    "balance",
     "usage limit",
     "usage_limit",
     "exhausted",
