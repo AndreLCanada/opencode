@@ -193,7 +193,7 @@ export function policy(opts: {
         Effect.flatMap((switched) => {
           if (!retry && !switched) return Cause.done(meta.attempt)
           return Effect.gen(function* () {
-            const wait = switched ? 0 : delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
+            const wait = switched || eligible ? 0 : delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
             const now = yield* Clock.currentTimeMillis
             if (!retry) {
               yield* opts.set({
