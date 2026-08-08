@@ -109,6 +109,7 @@ export const dict = {
   "command.schedule.cron": "Cron expression",
   "command.schedule.localTime": "Times are in your local timezone",
   "command.schedule.prompt": "Prompt",
+  "command.schedule.model": "Model",
   "command.schedule.add": "Schedule",
   "command.schedule.existing": "Existing tasks",
   "command.schedule.error.promptRequired": "Prompt is required",

@@ -1,5 +1,5 @@
 import { CronExpressionParser } from "cron-parser"
-import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -196,6 +196,7 @@ const DEFAULT_FORM = {
   dayOfWeek: 1,
   dayOfMonth: 1,
   customCron: "",
+  modelKey: null as string | null,
   prompt: "",
   error: null as string | null,
 }
@@ -206,6 +207,13 @@ export function ScheduleDialog() {
   const language = useLanguage()
   const local = useLocal()
   const [form, setForm] = createStore({ ...DEFAULT_FORM })
+  const models = createMemo(() => local.model.list())
+  const modelKey = (model: { provider: { id: string }; id: string }) => `${model.provider.id}:${model.id}`
+  const modelLabel = (model: { provider: { name: string }; name: string }) => `${model.provider.name} / ${model.name}`
+  const selectedModel = createMemo(() => {
+    if (form.modelKey) return models().find((model) => modelKey(model) === form.modelKey)
+    return local.model.current()
+  })
 
   const frequencies = [
     { label: language.t("command.schedule.frequency.daily"), value: "daily" as const },
@@ -232,6 +240,7 @@ export function ScheduleDialog() {
       dayOfWeek: derived.dayOfWeek,
       dayOfMonth: derived.dayOfMonth,
       customCron: task.customCron || derived.customCron,
+      modelKey: `${task.model.providerID}:${task.model.modelID}`,
       prompt: task.prompt,
       error: null,
     })
@@ -254,7 +263,7 @@ export function ScheduleDialog() {
       setForm("error", language.t("command.schedule.error.cronInvalid"))
       return false
     }
-    const model = local.model.current()
+    const model = selectedModel()
     if (!model) {
       setForm("error", language.t("command.schedule.error.modelRequired"))
       return false
@@ -309,7 +318,19 @@ export function ScheduleDialog() {
       </DialogHeader>
       <DialogBody class="flex max-h-[min(560px,calc(100vh-160px))] w-full flex-col gap-5 !overflow-y-auto min-h-0 px-4 pt-4 pb-1">
         <div class="flex flex-col gap-5 shrink-0">
-          <Field>
+           <Field>
+             <Field.Label>{language.t("command.schedule.model")}</Field.Label>
+             <SelectV2
+               class="!w-full"
+               options={models()}
+               value={modelKey}
+               label={modelLabel}
+               current={selectedModel()}
+               onSelect={(value) => value && setForm("modelKey", modelKey(value))}
+             />
+           </Field>
+
+           <Field>
             <Field.Label>{language.t("command.schedule.frequency")}</Field.Label>
             <SelectV2
               class="!w-full"
