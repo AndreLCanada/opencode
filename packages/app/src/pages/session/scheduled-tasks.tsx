@@ -207,8 +207,15 @@ export function ScheduleDialog() {
   const language = useLanguage()
   const local = useLocal()
   const [form, setForm] = createStore({ ...DEFAULT_FORM })
-  const models = createMemo(() => local.model.list())
   const modelKey = (model: { provider: { id: string }; id: string }) => `${model.provider.id}:${model.id}`
+  const models = createMemo(() => {
+    const current = local.model.current()
+    const visible = local.model.list().filter((model) =>
+      local.model.visible({ modelID: model.id, providerID: model.provider.id }),
+    )
+    if (!current || visible.some((model) => modelKey(model) === modelKey(current))) return visible
+    return [current, ...visible]
+  })
   const modelLabel = (model: { provider: { name: string }; name: string }) => `${model.provider.name} / ${model.name}`
   const selectedModel = createMemo(() => {
     if (form.modelKey) return models().find((model) => modelKey(model) === form.modelKey)
@@ -325,6 +332,8 @@ export function ScheduleDialog() {
                options={models()}
                value={modelKey}
                label={modelLabel}
+               groupBy={(model) => model.provider.name}
+               placeholder="Choose a model"
                current={selectedModel()}
                onSelect={(value) => value && setForm("modelKey", modelKey(value))}
              />
